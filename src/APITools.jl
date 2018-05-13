@@ -90,13 +90,38 @@ macro api(cmd::Symbol)
     end
 end
 
-const _cmdadd = (:define_public, :define_develop, :public, :develop, :base)
+const _cmdadd = (:define_public, :define_develop, :public, :develop, :base, :maybe_public)
 const _cmduse = (:use, :test, :extend, :export)
 
 @static V6_COMPAT && (const _ff = findfirst)
 @static V6_COMPAT || (_ff(lst, val) = coalesce(findfirst(isequal(val), lst), 0))
 
+_add_def!(deflst, explst, sym) = (push!(deflst, sym); push!(explst, esc(:(function $sym end))))
+
+"""Conditionally define functions, or import from Base"""
+function _maybe_public(exprs)
+    implst = Symbol[]
+    deflst = Symbol[]
+    explst = Expr[]
+    for ex in exprs
+        if isa(ex, Expr) && ex.head == :tuple
+            for sym in ex.args
+                isa(sym, Symbol) || error("@api $grp: $sym not a Symbol")
+                isdefined(Base, sym) ? push!(implst, sym) : _add_def!(deflst, explst, sym)
+            end
+        elseif isa(ex, Symbol)
+            isdefined(Base, ex) ? push!(implst, ex) : _add_def!(deflst, explst, ex)
+        else
+            error("@api $grp: syntax error $ex")
+        end
+    end
+    lst = _add_symbols(:base, implst)
+    isempty(deflst) && return lst
+    Expr(:toplevel, lst, explst..., esc(:( append!(__tmp_api__.public, $deflst))))
+end
+
 function _add_symbols(grp, exprs)
+    grp == :maybe_public && return _maybe_public(exprs)
     symbols = Symbol[]
     for ex in exprs
         if isa(ex, Expr) && ex.head == :tuple
@@ -111,10 +136,9 @@ function _add_symbols(grp, exprs)
         syms = SymList(symbols)
         expr = "APITools._make_list($(QuoteNode(:import)), $(QuoteNode(:Base)), $syms)"
         parsed = Meta.parse(expr)
-        dump(parsed)
         Expr(:toplevel,
              V6_COMPAT ? :(eval(current_module(), $parsed)) : :(eval(@__MODULE__, $parsed)),
-             esc(:( append!(__tmp_api__.$grp, $symbols))))
+             esc(:( append!(__tmp_api__.base, $symbols))))
     else
         esc(:( append!(__tmp_api__.$grp, $symbols) ))
     end
@@ -126,7 +150,7 @@ function _make_modules(exprs)
     for ex in exprs
         if isa(ex, Expr) && ex.head == :tuple
             append!(modlst, ex.args)
-            for e in ex.args ; push!(uselst, :(using $sym)) ; end
+            for sym in ex.args ; push!(uselst, :(using $sym)) ; end
         elseif isa(ex, Symbol)
             push!(modlst, ex)
             push!(uselst, :(using $ex))
@@ -181,9 +205,7 @@ end
 
 function _make_exprs(cmd, mod, grp)
     from = QuoteNode(grp == :base ? :Base : mod)
-    x = :(eval($(Meta.parse("APITools._make_list($(QuoteNode(cmd)), $from, $mod.__api__.$grp)"))))
-    println("_make_exprs($cmd, $mod, $grp) => $x")
-    x
+    :(eval($(Meta.parse("APITools._make_list($(QuoteNode(cmd)), $from, $mod.__api__.$grp)"))))
 end
 
 end # module APITools
