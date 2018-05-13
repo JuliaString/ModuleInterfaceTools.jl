@@ -8,6 +8,9 @@ Licensed under MIT License, see LICENSE.md
 (@def macro "stolen" from DiffEqBase.jl/src/util.jl :-) )
 """
 module APITools
+
+const V6_COMPAT = VERSION < v"0.7.0-DEV"
+
 export @api, @def
 
 macro def(name, definition)
@@ -69,7 +72,7 @@ macro api(cmd::Symbol)
             global __tmp_chain__ = Vector{APITools.API}[]
         end
     elseif cmd == :freeze
-        @static if VERSION < v"0.7.0-DEV"
+        @static if V6_COMPAT
             esc(quote
                 const __chain__ = APITools.APIList(__tmp_chain__)
                 const __api__ = APITools.API(current_module(), __tmp_api__)
@@ -90,9 +93,8 @@ end
 const _cmdadd = (:define_public, :define_develop, :public, :develop, :base)
 const _cmduse = (:use, :test, :extend, :export)
 
-@static VERSION < v"0.7.0-DEV" && (const _ff = findfirst)
-@static VERSION < v"0.7.0-DEV" ||
-    (_ff(lst, val) = coalesce(findfirst(isequal(val), lst), 0))
+@static V6_COMPAT && (const _ff = findfirst)
+@static V6_COMPAT || (_ff(lst, val) = coalesce(findfirst(isequal(val), lst), 0))
 
 function _add_symbols(grp, exprs)
     symbols = Symbol[]
@@ -105,7 +107,17 @@ function _add_symbols(grp, exprs)
             error("@api $grp: syntax error $ex")
         end
     end
-    esc(:( append!(__tmp_api__.$grp, $symbols) ))
+    if grp == :base
+        syms = SymList(symbols)
+        expr = "APITools._make_list($(QuoteNode(:import)), $(QuoteNode(:Base)), $syms)"
+        parsed = Meta.parse(expr)
+        dump(parsed)
+        Expr(:toplevel,
+             V6_COMPAT ? :(eval(current_module(), $parsed)) : :(eval(@__MODULE__, $parsed)),
+             esc(:( append!(__tmp_api__.$grp, $symbols))))
+    else
+        esc(:( append!(__tmp_api__.$grp, $symbols) ))
+    end
 end
 
 function _make_modules(exprs)
@@ -169,7 +181,9 @@ end
 
 function _make_exprs(cmd, mod, grp)
     from = QuoteNode(grp == :base ? :Base : mod)
-    :(eval($(Meta.parse("APITools._make_list($(QuoteNode(cmd)), $from, $mod.__api__.$grp)"))))
+    x = :(eval($(Meta.parse("APITools._make_list($(QuoteNode(cmd)), $from, $mod.__api__.$grp)"))))
+    println("_make_exprs($cmd, $mod, $grp) => $x")
+    x
 end
 
 end # module APITools
