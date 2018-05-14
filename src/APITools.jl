@@ -3,6 +3,7 @@ __precompile__(true)
 API Tools package
 
 Copyright 2018 Gandalf Software, Inc., Scott P. Jones
+
 Licensed under MIT License, see LICENSE.md
 
 (@def macro "stolen" from DiffEqBase.jl/src/util.jl :-) )
@@ -68,6 +69,7 @@ const APIList = Tuple{Vararg{API}}
 macro api(cmd::Symbol)
     if cmd == :init
         quote
+            export @api
             global __tmp_api__ = APITools.TMP_API()
             global __tmp_chain__ = Vector{APITools.API}[]
         end
