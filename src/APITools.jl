@@ -28,7 +28,8 @@ struct TMP_API
     develop::Vector{Symbol}
     define_public::Vector{Symbol}
     define_develop::Vector{Symbol}
-    TMP_API() = new(Symbol[], Symbol[], Symbol[], Symbol[], Symbol[])
+    define_module::Vector{Symbol}
+    TMP_API() = new(Symbol[], Symbol[], Symbol[], Symbol[], Symbol[], Symbol[])
 end
 
 const SymList = Tuple{Vararg{Symbol}}
@@ -40,11 +41,12 @@ struct API
     develop::SymList
     define_public::SymList
     define_develop::SymList
+    define_module::SymList
 
     API(mod, api::TMP_API) =
         new(mod,
             SymList(api.base), SymList(api.public), SymList(api.develop),
-            SymList(api.define_public), SymList(api.define_develop))
+            SymList(api.define_public), SymList(api.define_develop), SymList(api.define_module))
 end
 
 const APIList = Tuple{Vararg{API}}
@@ -65,11 +67,12 @@ const APIList = Tuple{Vararg{API}}
  * @api develop <names...> # Add functions that are part of the development API
  * @api define_public <names...> # Add other symbols that are part of the public API (structs, consts)
  * @api define_develop <names...> # Add other symbols that are part of the development API
+ * @api define_module <names...> # Add submodule names that are part of the API
 """
 macro api(cmd::Symbol)
     if cmd == :init
         quote
-            export @api
+            export @api, APITools
             global __tmp_api__ = APITools.TMP_API()
             global __tmp_chain__ = Vector{APITools.API}[]
         end
@@ -92,8 +95,9 @@ macro api(cmd::Symbol)
     end
 end
 
-const _cmdadd = (:define_public, :define_develop, :public, :develop, :base, :maybe_public)
 const _cmduse = (:use, :test, :extend, :export)
+const _cmdadd =
+    (:define_module, :define_public, :define_develop, :public, :develop, :base, :maybe_public)
 
 @static V6_COMPAT && (const _ff = findfirst)
 @static V6_COMPAT || (_ff(lst, val) = coalesce(findfirst(isequal(val), lst), 0))
@@ -168,24 +172,29 @@ macro api(cmd::Symbol, exprs...)
     ind == 0 || return _add_symbols(cmd, exprs)
 
     ind = _ff(_cmduse, cmd)
-    ind == 0 && error("@api unrecognized command: $cmd")
 
     lst, modules = _make_modules(exprs)
 
-    if ind == 1 # use
+    cmd == :export &&
+        return esc(Expr(:toplevel, lst...,
+                 [:(eval(Expr( :export, $mod.__api__.$grp... )))
+                  for mod in modules, grp in (:define_module, :define_public, :public)]...))
+
+    for mod in modules
+        push!(lst, _make_module_exprs(mod))
+    end
+
+    if cmd == :use
         grplst = (:public, :define_public)
-    elseif ind == 2 # test
-        grplst = (:public, :define_public, :develop, :define_develop)
-    elseif ind == 3 # extend
+    elseif cmd == :test
+        grplst = (:public, :develop, :define_public, :define_develop)
+    elseif cmd == :extend
         grplst = (:define_public, :define_develop)
         for mod in modules, grp in (:base, :public, :develop)
             push!(lst, _make_exprs(:import, mod, grp))
         end
-    else # export
-        grplst = ()
-        for mod in modules, grp in (:public, :define_public)
-            push!(lst, :(eval(Expr( :export, $mod.__api__.$grp... ))))
-        end
+    else
+        error("@api unrecognized command: $cmd")
     end
     for mod in modules, grp in grplst
         push!(lst, _make_exprs(:using, mod, grp))
@@ -194,6 +203,15 @@ macro api(cmd::Symbol, exprs...)
 end
 
 # We need Expr(:toplevel, (Expr($cmd, $mod, $sym) for sym in $mod.__api__.$grp)...)
+
+function _make_module_list(mod, lst)
+    isempty(lst) && return nothing
+    length(lst) == 1 ? :(using $mod.$(lst[1])) :
+        Expr(:toplevel, [:(using $mod.$nam) for nam in lst]...)
+end
+
+_make_module_exprs(mod) =
+ :(eval($(Meta.parse("APITools._make_module_list($(QuoteNode(mod)), $mod.__api__.define_module)"))))
 
 function _make_list(cmd, mod, lst)
     isempty(lst) && return nothing
