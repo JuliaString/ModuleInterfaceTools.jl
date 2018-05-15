@@ -27,9 +27,9 @@ git:
 
 ## uncomment the following lines to override the default test script
 script:
-  - julia -e 'Pkg.clone(pwd()); Pkg.test("APITools"; coverage=true)'
+  - julia -e 'VERSION < v"0.7.0-DEV" || (using Pkg); Pkg.clone(pwd()); Pkg.test("APITools"; coverage=true)'
 after_success:
   # push coverage results to Coveralls
-  - julia -e 'cd(Pkg.dir("APITools")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+  - julia -e 'VERSION < v"0.7.0-DEV" || (using Pkg); cd(Pkg.dir("APITools")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
   # push coverage results to Codecov
-  - julia -e 'cd(Pkg.dir("APITools")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  - julia -e 'VERSION < v"0.7.0-DEV" || (using Pkg); cd(Pkg.dir("APITools")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
