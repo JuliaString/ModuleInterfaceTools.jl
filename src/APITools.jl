@@ -11,8 +11,12 @@ Licensed under MIT License, see LICENSE.md
 module APITools
 
 const V6_COMPAT = VERSION < v"0.7.0-DEV"
+const BIG_ENDIAN = (ENDIAN_BOM == 0x01020304)
 
-export @api, @def
+Base.parse(::Type{Expr}, args...; kwargs...) =
+    Meta.parse(args...; kwargs...)
+
+export @api, @def, V6_COMPAT, BIG_ENDIAN
 
 macro def(name, definition)
     quote
@@ -75,28 +79,40 @@ const _cur_mod = V6_COMPAT ? :( current_module() ) : :( @__MODULE__ )
  * @api define_module <names...> # Add submodule names that are part of the API
 """
 macro api(cmd::Symbol)
-    if cmd == :init
-        quote
-            export @api, APITools
-            global __tmp_api__ = APITools.TMP_API()
-            global __tmp_chain__ = Vector{APITools.API}[]
-        end
-    elseif cmd == :freeze
-        esc(quote
-            const __api__ = APITools.API($_cur_mod, __tmp_api__)
-            push!(__tmp_chain__, __api__)
-            const __chain__ = APITools.APIList(__tmp_chain__)
-            __tmp_chain__ = _tmp_api__ = nothing
-            end)
-    elseif cmd == :list
-        quote
-            show(__api__)
-            show(__tmp_chain__)
-        end
-    else
-        error("@api unrecognized command: $cmd")
-    end
+    cmd == :init && return _api_init()
+    cmd == :freeze && return _api_freeze()
+    cmd == :list && return _api_list()
+    error("@api unrecognized command: $cmd")
 end
+
+function _api_display(mod)
+    if isdefined(mod, :__api__)
+        show(eval(mod, :__api__))
+        show(eval(mod, :__chain__))
+    end
+    if isdefined(mod, :__tmp_api__)
+        show(eval(mod, :__tmp_api__))
+        show(eval(mod, :__tmp_chain__))
+    end
+    nothing
+end
+
+_api_init() =
+    quote
+        export @api, APITools
+        global __tmp_api__ = APITools.TMP_API()
+        global __tmp_chain__ = APITools.API[]
+    end
+
+_api_freeze() =
+    esc(quote
+        const __api__ = APITools.API($_cur_mod, __tmp_api__)
+        push!(__tmp_chain__, __api__)
+        const __chain__ = APITools.APIList(__tmp_chain__)
+        __tmp_chain__ = _tmp_api__ = nothing
+        end)
+
+_api_list(mod = _cur_mod) = :( _api_display($mod) )
 
 const _cmduse = (:use, :test, :extend, :export)
 const _cmdadd =
@@ -111,7 +127,7 @@ _add_def!(deflst, explst, sym) = (push!(deflst, sym); push!(explst, esc(:(functi
 function _maybe_public(exprs)
     implst = Symbol[]
     deflst = Symbol[]
-    explst = Expr[]
+    explst = isdefined(eval(_cur_mod), :__tmp_api__) ? Expr[] : Expr[_api_init()]
     for ex in exprs
         if isa(ex, Expr) && ex.head == :tuple
             for sym in ex.args
@@ -124,13 +140,11 @@ function _maybe_public(exprs)
             error("@api $grp: syntax error $ex")
         end
     end
-    lst = _add_symbols(:base, implst)
-    isempty(deflst) && return lst
-    Expr(:toplevel, lst, explst..., esc(:( append!(__tmp_api__.public, $deflst))))
+    isempty(deflst) || push!(explst, esc(:( append!(__tmp_api__.public, $deflst)))) 
+    Expr(:toplevel, _add_symbols(:base, implst)..., explst...)
 end
 
 function _add_symbols(grp, exprs)
-    grp == :maybe_public && return _maybe_public(exprs)
     symbols = Symbol[]
     for ex in exprs
         if isa(ex, Expr) && ex.head == :tuple
@@ -141,16 +155,13 @@ function _add_symbols(grp, exprs)
             error("@api $grp: syntax error $ex")
         end
     end
+    lst = isdefined(eval(_cur_mod), :__tmp_api__) ? Expr[] : Expr[_api_init()]
     if grp == :base
         syms = SymList(symbols)
         expr = "APITools._make_list($(QuoteNode(:import)), $(QuoteNode(:Base)), $syms)"
-        parsed = Meta.parse(expr)
-        Expr(:toplevel,
-             V6_COMPAT ? :(eval(current_module(), $parsed)) : :(eval(@__MODULE__, $parsed)),
-             esc(:( append!(__tmp_api__.base, $symbols))))
-    else
-        esc(:( append!(__tmp_api__.$grp, $symbols) ))
+        push!(lst, :(eval($_cur_mod, $(Meta.parse(expr)))))
     end
+    Expr(:toplevel, lst..., esc(:( append!(__tmp_api__.$grp, $symbols) )))
 end
 
 function _make_modules(exprs)
@@ -172,7 +183,7 @@ end
 
 macro api(cmd::Symbol, exprs...)
     ind = _ff(_cmdadd, cmd)
-    ind == 0 || return _add_symbols(cmd, exprs)
+    ind == 0 || return cmd == :maybe_public ? _maybe_public(exprs) : _add_symbols(cmd, exprs)
 
     ind = _ff(_cmduse, cmd)
 
@@ -182,6 +193,8 @@ macro api(cmd::Symbol, exprs...)
         return esc(Expr(:toplevel, lst...,
                  [:(eval(Expr( :export, $mod.__api__.$grp... )))
                   for mod in modules, grp in (:define_module, :define_public, :public)]...))
+    cmd == :list &&
+        return Expr(:toplevel, [:(eval(Expr(:call, :_api_display, $mod))) for mod in modules]...)
 
     for mod in modules
         push!(lst, _make_module_exprs(mod))
@@ -194,6 +207,10 @@ macro api(cmd::Symbol, exprs...)
         push!(lst, V6_COMPAT ? :(using Base.Test) : :(using Test))
     elseif cmd == :extend
         grplst = (:define_public, :define_develop)
+        # should add unique modules to __tmp_chain__
+        for mod in modules
+            push!(lst, :(in($mod.__api__, __tmp_chain__) || push!(__tmp_chain__, $mod.__api__)))
+        end
         for mod in modules, grp in (:base, :public, :develop)
             push!(lst, _make_exprs(:import, mod, grp))
         end
