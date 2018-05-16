@@ -51,11 +51,16 @@ end
 
 const APIList = Tuple{Vararg{API}}
 
+"""Expression to get current module"""
+const _cur_mod = V6_COMPAT ? :( current_module() ) : :( @__MODULE__ )
+
 """
 @api <cmd> [<symbols>...]
 
  * @api init             # set up module/package for adding names
  * @api freeze           # use at end of module, to "freeze" API
+
+ * @api list   <modules>... # list API(s) of given modules
 
  * @api use    <modules>... # use for normal use
  * @api test   <modules>... # using api and dev, for testing purposes
@@ -77,19 +82,12 @@ macro api(cmd::Symbol)
             global __tmp_chain__ = Vector{APITools.API}[]
         end
     elseif cmd == :freeze
-        @static if V6_COMPAT
-            esc(quote
-                const __chain__ = APITools.APIList(__tmp_chain__)
-                const __api__ = APITools.API(current_module(), __tmp_api__)
-                __tmp_chain__ = _tmp_api__ = nothing
-                end)
-        else
-            esc(quote
-                const __chain__ = APITools.APIList(__tmp_chain__)
-                const __api__ = APITools.API(@__MODULE__, __tmp_api__)
-                __tmp_chain__ = _tmp_api__ = nothing
-                end)
-        end
+        esc(quote
+            const __api__ = APITools.API($_cur_mod, __tmp_api__)
+            push!(__tmp_chain__, __api__)
+            const __chain__ = APITools.APIList(__tmp_chain__)
+            __tmp_chain__ = _tmp_api__ = nothing
+            end)
     else
         error("@api unrecognized command: $cmd")
     end
@@ -188,6 +186,7 @@ macro api(cmd::Symbol, exprs...)
         grplst = (:public, :define_public)
     elseif cmd == :test
         grplst = (:public, :develop, :define_public, :define_develop)
+        push!(lst, V6_COMPAT ? :(using Base.Test) :(using Test))
     elseif cmd == :extend
         grplst = (:define_public, :define_develop)
         for mod in modules, grp in (:base, :public, :develop)
@@ -206,8 +205,8 @@ end
 
 function _make_module_list(mod, lst)
     isempty(lst) && return nothing
-    length(lst) == 1 ? :(using $mod.$(lst[1])) :
-        Expr(:toplevel, [:(using $mod.$nam) for nam in lst]...)
+    length(lst) == 1 ? :(import $mod.$(lst[1])) :
+        Expr(:toplevel, [:(import $mod.$nam) for nam in lst]...)
 end
 
 _make_module_exprs(mod) =
