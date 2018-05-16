@@ -88,6 +88,11 @@ macro api(cmd::Symbol)
             const __chain__ = APITools.APIList(__tmp_chain__)
             __tmp_chain__ = _tmp_api__ = nothing
             end)
+    elseif cmd == :list
+        quote
+            show(__api__)
+            show(__tmp_chain__)
+        end
     else
         error("@api unrecognized command: $cmd")
     end
@@ -186,7 +191,7 @@ macro api(cmd::Symbol, exprs...)
         grplst = (:public, :define_public)
     elseif cmd == :test
         grplst = (:public, :develop, :define_public, :define_develop)
-        push!(lst, V6_COMPAT ? :(using Base.Test) :(using Test))
+        push!(lst, V6_COMPAT ? :(using Base.Test) : :(using Test))
     elseif cmd == :extend
         grplst = (:define_public, :define_develop)
         for mod in modules, grp in (:base, :public, :develop)
