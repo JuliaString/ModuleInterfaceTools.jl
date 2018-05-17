@@ -3,7 +3,7 @@
 
 using APITools
 
-@static VERSION < v"0.7.0-DEV" ? (using Base.Test) : (using Test)
+@static V6_COMPAT ? (using Base.Test) : (using Test)
 
 @def testcase begin
     myname = "Scott Paul Jones"
@@ -19,7 +19,13 @@ push!(LOAD_PATH, @__DIR__)
 
 @api init
 
-@api extend APITest
+import APITest: myfunc
+
+macroexpand( :( @api extend APITest ) )
+
+@api list
+
+@api list APITest
 
 myfunc(::AbstractFloat) = 3
 
