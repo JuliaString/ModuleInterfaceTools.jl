@@ -19,13 +19,9 @@ push!(LOAD_PATH, @__DIR__)
 
 @api init
 
-import APITest: myfunc
-
-macroexpand( :( @api extend APITest ) )
+@api extend APITest
 
 @api list
-
-@api list APITest
 
 myfunc(::AbstractFloat) = 3
 
@@ -34,7 +30,7 @@ myfunc(::AbstractFloat) = 3
     @test myfunc("foo") == 2
     @test myfunc(2.0) == 3
     @test APITest.__api__.mod == APITest
-    @test APITest.__api__.base == (:nextind, :getindex, :setindex!)
-    @test APITest.__api__.public  == (:myfunc,)
-    @test APITest.__api__.define_public == (:Foo,)
+    @test Set(APITest.__api__.base) == Set([:nextind, :getindex, :setindex!])
+    @test Set(APITest.__api__.public) == Set([:myfunc])
+    @test Set(APITest.__api__.define_public) == Set([:Foo])
 end

@@ -26,19 +26,25 @@ macro def(name, definition)
     end
 end
 
-struct TMP_API
-    base::Vector{Symbol}
-    public::Vector{Symbol}
-    develop::Vector{Symbol}
-    define_public::Vector{Symbol}
-    define_develop::Vector{Symbol}
-    define_module::Vector{Symbol}
-    TMP_API() = new(Symbol[], Symbol[], Symbol[], Symbol[], Symbol[], Symbol[])
+const SymSet = Set{Symbol}
+
+abstract type AbstractAPI end
+
+struct TMP_API <: AbstractAPI
+    mod::Module
+    base::SymSet
+    public::SymSet
+    develop::SymSet
+    define_public::SymSet
+    define_develop::SymSet
+    define_module::SymSet
+
+    TMP_API(mod::Module) = new(mod, SymSet(), SymSet(), SymSet(), SymSet(), SymSet(), SymSet())
 end
 
 const SymList = Tuple{Vararg{Symbol}}
 
-struct API
+struct API <: AbstractAPI
     mod::Module
     base::SymList
     public::SymList
@@ -46,17 +52,23 @@ struct API
     define_public::SymList
     define_develop::SymList
     define_module::SymList
-
-    API(mod, api::TMP_API) =
-        new(mod,
-            SymList(api.base), SymList(api.public), SymList(api.develop),
-            SymList(api.define_public), SymList(api.define_develop), SymList(api.define_module))
 end
 
-const APIList = Tuple{Vararg{API}}
+API(api::TMP_API) =
+    API(api.mod, SymList(api.base), SymList(api.public),
+        SymList(api.develop), SymList(api.define_public),
+        SymList(api.define_develop), SymList(api.define_module))
 
-"""Expression to get current module"""
-const _cur_mod = V6_COMPAT ? :( current_module() ) : :( @__MODULE__ )
+function Base.show(io::IO, api::AbstractAPI)
+    println(io, "APITools.API: ", api.mod)
+    for fld in (:base, :public, :develop, :define_public, :define_develop, :define_module)
+        syms = getfield(api, fld)
+        isempty(syms) || println(fld, ": ", syms)
+    end
+end
+
+"""Get current module"""
+cur_mod() = ccall(:jl_get_current_module, Ref{Module}, ())
 
 """
 @api <cmd> [<symbols>...]
@@ -79,44 +91,42 @@ const _cur_mod = V6_COMPAT ? :( current_module() ) : :( @__MODULE__ )
  * @api define_module <names...> # Add submodule names that are part of the API
 """
 macro api(cmd::Symbol)
-    cmd == :init && return _api_init()
-    cmd == :freeze && return esc(_api_freeze())
-    cmd == :list && return _api_list()
+    mod = @static V6_COMPAT ? current_module() : __module__
+    #=
+    @static if V6_COMPAT
+        println("api($mod, $cmd)")
+    else
+        println("api($__source__, $mod, $cmd)")
+    end
+    =#
+    cmd == :list   ? _api_list(mod) :
+    cmd == :init   ? _api_init(mod) :
+    cmd == :freeze ? _api_freeze(mod) :
     error("@api unrecognized command: $cmd")
 end
 
-function _api_display(api, chain)
+function _api_display(api::AbstractAPI)
     show(api)
-    println()
-    show(chain)
     println()
 end
 
-function _api_display(mod)
-    isdefined(mod, :__api__) &&
-        _api_display(eval(mod, :__api__), eval(mod, :__chain__))
-    isdefined(mod, :__tmp_api__) &&
-        _api_display(eval(mod, :__tmp_api__), eval(mod, :__tmp_chain__))
+function _api_list(mod::Module)
+    isdefined(mod, :__api__) && _api_display(eval(mod, :__api__))
+    isdefined(mod, :__tmp_api__) && _api_display(eval(mod, :__tmp_api__))
     nothing
 end
 
-_api_freeze(mod, api, chain) = APIList(push!(chain, API(mod, api)))
+function _api_init(mod::Module)
+    ex = :( export @api, APITools ; global __tmp_api__ = APITools.TMP_API($mod) )
+    isdefined(mod, :__tmp_api__) || eval(mod, ex)
+    nothing
+end
 
-_api_init() =
-    quote
-        export @api, APITools
-        global __tmp_api__ = APITools.TMP_API()
-        global __tmp_chain__ = APITools.API[]
-    end
-
-_api_freeze() =
-    quote
-        global const __chain__ = APITools._api_freeze($_cur_mod, __tmp_api__, __tmp_chain__)
-        global const __api__ = __chain__[end]
-        __tmp_chain__ = __tmp_api__ = nothing
-    end
-
-_api_list(mod = _cur_mod) = :( APITools._api_display($mod) )
+function _api_freeze(mod::Module)
+    ex = :( global const __api__ = APITools.API(__tmp_api__) ; __tmp_api__ = nothing )
+    isdefined(mod, :__tmp_api__) && eval(mod, :( __tmp_api__ !== nothing ) ) && eval(mod, ex)
+    nothing
+end
 
 const _cmduse = (:use, :test, :extend, :export)
 const _cmdadd =
@@ -125,102 +135,96 @@ const _cmdadd =
 @static V6_COMPAT && (const _ff = findfirst)
 @static V6_COMPAT || (_ff(lst, val) = coalesce(findfirst(isequal(val), lst), 0))
 
-function _add_def!(deflst, implst, explst, sym)
+function _add_def!(curmod, sym)
     if isdefined(Base, sym)
-        push!(implst, sym)
+        eval(curmod, :(push!(__tmp_api__.base, $(QuoteNode(sym)))))
+        eval(curmod, :(import Base.$sym ))
     else
-        push!(deflst, sym)
-        push!(explst, esc(:(function $sym end)))
+        eval(curmod, :(push!(__tmp_api__.public, $(QuoteNode(sym)))))
+        eval(curmod, :(function $sym end))
     end
 end
 
 """Add symbols"""
-function _add_symbols(grp, exprs)
-    print("_add_symbols($grp, $exprs)")
-    outlst = Expr[:(isdefined($_cur_mod, :__tmp_api__) || APITools._api_init())]
-    println(" => ", outlst)
-    outlst = Expr[]
+function _add_symbols(curmod, grp, exprs)
+    #print("_add_symbols($curmod, $grp, $exprs)", isdefined(curmod, :__tmp_api__))
+    _api_init(curmod)
     if grp == :maybe_public
-        implst = Symbol[]
-        deflst = Symbol[]
         for ex in exprs
             if isa(ex, Expr) && ex.head == :tuple
                 for sym in ex.args
                     isa(sym, Symbol) || error("@api $grp: $sym not a Symbol")
-                    _add_def!(deflst, implst, outlst, sym)
+                    _add_def!(curmod, sym)
                 end
             elseif isa(ex, Symbol)
-                _add_def!(deflst, implst, outlst, ex)
+                _add_def!(curmod, ex)
             else
                 error("@api $grp: syntax error $ex")
             end
         end
-        isempty(deflst) ||
-            push!(outlst, Expr(:call, :push!,
-                               Expr(:., :__tmp_api__, QuoteNode(:public)),
-                               QuoteNode.(deflst)...))
-        exprs = implst
-        grp = :base
-    end
-    symbols = Symbol[]
-    for ex in exprs
-        if isa(ex, Expr) && ex.head == :tuple
-            append!(symbols, ex.args)
-        elseif isa(ex, Symbol)
-            push!(symbols, ex)
-        else
-            error("@api $grp: syntax error $ex")
+    else
+        symbols = SymSet()
+        for ex in exprs
+            if isa(ex, Expr) && ex.head == :tuple
+                push!(symbols, ex.args...)
+            elseif isa(ex, Symbol)
+                push!(symbols, ex)
+            else
+                error("@api $grp: syntax error $ex")
+            end
+        end
+        #println("symbols: ", symbols)
+        if grp == :base
+            for sym in symbols
+                eval(curmod, :( import Base.$sym ))
+            end
+        end
+        for sym in symbols
+            eval(curmod, :( push!(__tmp_api__.$grp, $(QuoteNode(sym)) )))
         end
     end
-    println("symbols: ", symbols)
-    if grp == :base
-        syms = SymList(symbols)
-        expr = "APITools._make_list($(QuoteNode(:import)), $(QuoteNode(:Base)), $syms)"
-        push!(outlst, esc(:(eval($_cur_mod, $(Meta.parse(expr))))))
-    end
-    push!(outlst, Expr(:call, :push!,
-                       Expr(:., :__tmp_api__, QuoteNode(grp)), QuoteNode.(symbols)...))
-    println(outlst)
-    outlst
+    nothing
 end
 
-function _make_modules(cmd, exprs)
-    uselst = Expr[]
-    modlst = Symbol[]
+function _make_modules(curmod, cmd, exprs)
+    modlst = SymSet()
     for ex in exprs
         if isa(ex, Expr) && ex.head == :tuple
-            append!(modlst, ex.args)
-            for sym in ex.args ; push!(uselst, :(import $sym)) ; end
+            push!(modlst, ex.args...)
+            for sym in ex.args ; eval(curmod, :(import $sym)) ; end
         elseif isa(ex, Symbol)
             push!(modlst, ex)
-            push!(uselst, :(import $ex))
+            eval(curmod, :(import $ex))
         else
             error("@api $cmd: syntax error $ex")
         end
     end
-    uselst, modlst
+    modlst
 end
 
-function _api(cmd, exprs)
+function _api(curmod::Module, cmd::Symbol, exprs)
+    #println("api($curmod, $cmd, $exprs)")
     ind = _ff(_cmdadd, cmd)
-    ind == 0 || return esc(Expr(:toplevel, _add_symbols(cmd, exprs), nothing))
+    ind == 0 || return _add_symbols(curmod, cmd, exprs)
 
     ind = _ff(_cmduse, cmd)
 
-    lst, modules = _make_modules(cmd, exprs)
+    modules = _make_modules(curmod, cmd, exprs)
 
     cmd == :export &&
-        return esc(Expr(:toplevel, lst...,
-                        [:(eval($_cur_mod, Expr( :export, $mod.__api__.$grp... )))
+        return esc(Expr(:toplevel,
+                        [:(eval(Expr( :export, $mod.__api__.$grp... )))
                          for mod in modules, grp in (:define_module, :define_public, :public)]...,
                         nothing))
     cmd == :list &&
         return Expr(:toplevel,
-                    [:(eval($_cur_mod, APITools._api_display($mod))) for mod in modules]...,
+                    [:(eval(APITools._api_display($mod))) for mod in modules]...,
                     nothing)
 
+    lst = Expr[]
     for mod in modules
-        push!(lst, _make_module_exprs(mod))
+        exp = "APITools._make_module_list($(QuoteNode(mod)), $mod.__api__.define_module)"
+        push!(lst, :(eval($(Meta.parse(exp)))))
     end
 
     if cmd == :use
@@ -230,11 +234,6 @@ function _api(cmd, exprs)
         push!(lst, V6_COMPAT ? :(using Base.Test) : :(using Test))
     elseif cmd == :extend
         grplst = (:define_public, :define_develop)
-        # should add unique modules to __tmp_chain__
-        for mod in modules
-            push!(lst,
-                  esc(:(in($mod.__api__, __tmp_chain__) || push!(__tmp_chain__, $mod.__api__))))
-        end
         for mod in modules, grp in (:base, :public, :develop)
             push!(lst, _make_exprs(:import, mod, grp))
         end
@@ -247,18 +246,17 @@ function _api(cmd, exprs)
     esc(Expr(:toplevel, lst..., nothing))
 end
 
-macro api(cmd::Symbol, exprs...) ; _api(cmd, exprs) ; end
-
-# We need Expr(:toplevel, (Expr($cmd, $mod, $sym) for sym in $mod.__api__.$grp)...)
+@static if V6_COMPAT
+    macro api(cmd::Symbol, exprs...) ; _api(current_module(), cmd, exprs) ; end
+else
+    macro api(cmd::Symbol, exprs...) ; _api(__module__, cmd, exprs) ; end
+end
 
 function _make_module_list(mod, lst)
     isempty(lst) && return nothing
     length(lst) == 1 ? :(import $mod.$(lst[1])) :
         Expr(:toplevel, [:(import $mod.$nam) for nam in lst]..., nothing)
 end
-
-_make_module_exprs(mod) =
- :(eval($_cur_mod, $(Meta.parse("APITools._make_module_list($(QuoteNode(mod)), $mod.__api__.define_module)"))))
 
 function _make_list(cmd, mod, lst)
     isempty(lst) && return nothing
@@ -272,8 +270,7 @@ end
 
 function _make_exprs(cmd, mod, grp)
     from = QuoteNode(grp == :base ? :Base : mod)
-    :(eval($_cur_mod,
-           $(Meta.parse("APITools._make_list($(QuoteNode(cmd)), $from, $mod.__api__.$grp)"))))
+    :(eval($(Meta.parse("APITools._make_list($(QuoteNode(cmd)), $from, $mod.__api__.$grp)"))))
 end
 
 end # module APITools
