@@ -237,10 +237,8 @@ function _api(curmod::Module, cmd::Symbol, exprs)
     esc(Expr(:toplevel, lst..., nothing))
 end
 
-@static if V6_COMPAT
-    macro api(cmd::Symbol, exprs...) ; _api(current_module(), cmd, exprs) ; end
-else
-    macro api(cmd::Symbol, exprs...) ; _api(__module__, cmd, exprs) ; end
+macro api(cmd::Symbol, exprs...)
+    @static V6_COMPAT ? _api(current_module(), cmd, exprs) : _api(__module__, cmd, exprs)
 end
 
 function _make_module_list(mod, lst)
@@ -251,12 +249,8 @@ end
 
 function _make_list(cmd, mod, lst)
     isempty(lst) && return nothing
-    @static if VERSION < v"0.7.0-DEV"
-        length(lst) > 1 ?
-            Expr(:toplevel, [Expr(cmd, mod, nam) for nam in lst]...) : Expr(cmd, mod, lst[1])
-    else
-        Expr(cmd, Expr(:(:), Expr(:., mod), [Expr(:., nam) for nam in lst]...))
-    end
+    length(lst) > 1 ?
+        Expr(:toplevel, [Expr(cmd, mod, nam) for nam in lst]...) : Expr(cmd, mod, lst[1])
 end
 
 function _make_exprs(cmd, mod, grp)
