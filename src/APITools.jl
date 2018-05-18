@@ -120,7 +120,7 @@ function _api_freeze(mod::Module)
     nothing
 end
 
-const _cmduse = (:use, :test, :extend, :export)
+const _cmduse = (:use, :test, :extend, :export, :list)
 const _cmdadd =
     (:define_module, :define_public, :define_develop, :public, :develop, :base, :maybe_public)
 
@@ -178,29 +178,24 @@ function _add_symbols(curmod, grp, exprs)
     nothing
 end
 
-function _make_modules(curmod, cmd, exprs)
-    modlst = SymSet()
+function _api(curmod::Module, cmd::Symbol, exprs)
+    ind = _ff(_cmdadd, cmd)
+    ind == 0 || return _add_symbols(curmod, cmd, exprs)
+
+    _ff(_cmduse, cmd) == 0 && error("Syntax error: @api $cmd $exprs")
+
+    modules = SymSet()
     for ex in exprs
         if isa(ex, Expr) && ex.head == :tuple
-            push!(modlst, ex.args...)
+            push!(modules, ex.args...)
             for sym in ex.args ; eval(curmod, :(import $sym)) ; end
         elseif isa(ex, Symbol)
-            push!(modlst, ex)
+            push!(modules, ex)
             eval(curmod, :(import $ex))
         else
             error("@api $cmd: syntax error $ex")
         end
     end
-    modlst
-end
-
-function _api(curmod::Module, cmd::Symbol, exprs)
-    ind = _ff(_cmdadd, cmd)
-    ind == 0 || return _add_symbols(curmod, cmd, exprs)
-
-    ind = _ff(_cmduse, cmd)
-
-    modules = _make_modules(curmod, cmd, exprs)
 
     cmd == :export &&
         return esc(Expr(:toplevel,
@@ -212,50 +207,66 @@ function _api(curmod::Module, cmd::Symbol, exprs)
                     [:(eval(APITools._api_display($mod))) for mod in modules]...,
                     nothing)
 
-    lst = Expr[]
-    for mod in modules
-        exp = "APITools._make_module_list($(QuoteNode(mod)), $mod.__api__.define_module)"
-        push!(lst, :(eval($(Meta.parse(exp)))))
+    for nam in modules
+        mod = eval(curmod, nam)
+        api = eval(mod, :__api__)
+        lst = getfield(api, :define_module)
+        for sym in lst
+            eval(curmod, :(using $mod.$sym))
+        end
     end
 
-    if cmd == :use
-        grplst = (:public, :define_public)
-    elseif cmd == :test
-        grplst = (:public, :develop, :define_public, :define_develop)
-        push!(lst, V6_COMPAT ? :(using Base.Test) : :(using Test))
-    elseif cmd == :extend
-        grplst = (:define_public, :define_develop)
-        for mod in modules, grp in (:base, :public, :develop)
-            push!(lst, _make_exprs(:import, mod, grp))
+    if cmd == :extend
+        for nam in modules
+            mod = eval(curmod, nam)
+            if isdefined(mod, :__api__)
+                api = eval(mod, :__api__)
+                _import_list(curmod, api, :Base, :base)
+                _import_list(curmod, api, nam,   :public)
+                _import_list(curmod, api, nam,   :develop)
+                _using_list(curmod,  api, nam,   :define_public)
+                _using_list(curmod,  api, nam,   :define_develop)
+            else
+                println("API not found for module: $mod")
+            end
         end
-    else
-        error("@api unrecognized command: $cmd")
+        return nothing
     end
-    for mod in modules, grp in grplst
-        push!(lst, _make_exprs(:using, mod, grp))
+
+    # Be nice and set up standard Test
+    cmd == :test && eval(curmod, V6_COMPAT ? :(using Base.Test) : :(using Test))
+
+    for nam in modules
+        mod = eval(curmod, nam)
+        if isdefined(mod, :__api__)
+            api = eval(mod, :__api__)
+            _using_list(curmod, api, nam, :public)
+            _using_list(curmod, api, nam, :define_public)
+            if cmd == :test
+                _using_list(curmod, api, nam, :public)
+                _using_list(curmod, api, nam, :define_public)
+            end
+        end
     end
-    esc(Expr(:toplevel, lst..., nothing))
+
+    nothing
+end
+
+function _using_list(curmod, api, mod, grp)
+    lst = getfield(api, grp)
+    for sym in lst
+        eval(curmod, :(using $mod.$sym))
+    end
+end
+function _import_list(curmod, api, mod, grp)
+    lst = getfield(api, grp)
+    for sym in lst
+        eval(curmod, :(import $mod.$sym))
+    end
 end
 
 macro api(cmd::Symbol, exprs...)
     @static V6_COMPAT ? _api(current_module(), cmd, exprs) : _api(__module__, cmd, exprs)
-end
-
-function _make_module_list(mod, lst)
-    isempty(lst) && return nothing
-    length(lst) == 1 ? :(import $mod.$(lst[1])) :
-        Expr(:toplevel, [:(import $mod.$nam) for nam in lst]..., nothing)
-end
-
-function _make_list(cmd, mod, lst)
-    isempty(lst) && return nothing
-    length(lst) > 1 ?
-        Expr(:toplevel, [Expr(cmd, mod, nam) for nam in lst]...) : Expr(cmd, mod, lst[1])
-end
-
-function _make_exprs(cmd, mod, grp)
-    from = QuoteNode(grp == :base ? :Base : mod)
-    :(eval($(Meta.parse("APITools._make_list($(QuoteNode(cmd)), $from, $mod.__api__.$grp)"))))
 end
 
 end # module APITools
