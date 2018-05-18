@@ -17,8 +17,6 @@ end
 # Pick up APITest from the test directory
 push!(LOAD_PATH, @__DIR__)
 
-@api init
-
 @api extend APITest
 
 @api list

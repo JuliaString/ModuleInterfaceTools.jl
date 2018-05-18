@@ -73,10 +73,9 @@ cur_mod() = ccall(:jl_get_current_module, Ref{Module}, ())
 """
 @api <cmd> [<symbols>...]
 
- * @api init             # set up module/package for adding names
- * @api freeze           # use at end of module, to "freeze" API
+ * @api freeze              # use at end of module, to "freeze" API
 
- * @api list   <modules>... # list API(s) of given modules
+ * @api list   <modules>... # list API(s) of given modules (or current if none given)
 
  * @api use    <modules>... # use for normal use
  * @api test   <modules>... # using api and dev, for testing purposes
@@ -92,13 +91,6 @@ cur_mod() = ccall(:jl_get_current_module, Ref{Module}, ())
 """
 macro api(cmd::Symbol)
     mod = @static V6_COMPAT ? current_module() : __module__
-    #=
-    @static if V6_COMPAT
-        println("api($mod, $cmd)")
-    else
-        println("api($__source__, $mod, $cmd)")
-    end
-    =#
     cmd == :list   ? _api_list(mod) :
     cmd == :init   ? _api_init(mod) :
     cmd == :freeze ? _api_freeze(mod) :
@@ -203,7 +195,6 @@ function _make_modules(curmod, cmd, exprs)
 end
 
 function _api(curmod::Module, cmd::Symbol, exprs)
-    #println("api($curmod, $cmd, $exprs)")
     ind = _ff(_cmdadd, cmd)
     ind == 0 || return _add_symbols(curmod, cmd, exprs)
 
