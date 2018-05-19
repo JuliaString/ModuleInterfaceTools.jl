@@ -29,6 +29,6 @@ myfunc(::AbstractFloat) = 3
     @test myfunc(2.0) == 3
     @test APITest.__api__.mod == APITest
     @test Set(APITest.__api__.base) == Set([:nextind, :getindex, :setindex!])
-    @test Set(APITest.__api__.public) == Set([:myfunc])
-    @test Set(APITest.__api__.define_public) == Set([:Foo])
+    @test Set(APITest.__api__.public) == Set([:Foo])
+    @test Set(APITest.__api__.public!) == Set([:myfunc])
 end

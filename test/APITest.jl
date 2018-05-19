@@ -3,9 +3,9 @@ using APITools
 
 @api base nextind, getindex, setindex!
 
-@api public myfunc
+@api public! myfunc
 
-@api define_public Foo
+@api public Foo
 
 struct Foo end
 
