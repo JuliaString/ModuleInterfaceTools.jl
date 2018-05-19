@@ -165,7 +165,6 @@ function _add_symbols(curmod, grp, exprs)
                 error("@api $grp: syntax error $ex")
             end
         end
-        #println("symbols: ", symbols)
         if grp == :base
             for sym in symbols
                 eval(curmod, :( import Base.$sym ))
@@ -209,23 +208,24 @@ function _api(curmod::Module, cmd::Symbol, exprs)
 
     for nam in modules
         mod = eval(curmod, nam)
-        api = eval(mod, :__api__)
-        lst = getfield(api, :define_module)
-        for sym in lst
-            eval(curmod, :(using $mod.$sym))
+        for sym in getfield(eval(mod, :__api__), :define_module)
+            eval(curmod, :(using $nam.$sym))
         end
     end
+
+    imp = :import
+    use = :using
 
     if cmd == :extend
         for nam in modules
             mod = eval(curmod, nam)
             if isdefined(mod, :__api__)
                 api = eval(mod, :__api__)
-                _import_list(curmod, api, :Base, :base)
-                _import_list(curmod, api, nam,   :public)
-                _import_list(curmod, api, nam,   :develop)
-                _using_list(curmod,  api, nam,   :define_public)
-                _using_list(curmod,  api, nam,   :define_develop)
+                _do_list(curmod, imp, api, :Base, :base)
+                _do_list(curmod, imp, api, nam,   :public)
+                _do_list(curmod, imp, api, nam,   :develop)
+                _do_list(curmod, use, api, nam,   :define_public)
+                _do_list(curmod, use, api, nam,   :define_develop)
             else
                 println("API not found for module: $mod")
             end
@@ -240,11 +240,11 @@ function _api(curmod::Module, cmd::Symbol, exprs)
         mod = eval(curmod, nam)
         if isdefined(mod, :__api__)
             api = eval(mod, :__api__)
-            _using_list(curmod, api, nam, :public)
-            _using_list(curmod, api, nam, :define_public)
+            _do_list(curmod, use, api, nam, :public)
+            _do_list(curmod, use, api, nam, :define_public)
             if cmd == :test
-                _using_list(curmod, api, nam, :public)
-                _using_list(curmod, api, nam, :define_public)
+                _do_list(curmod, use, api, nam, :public)
+                _do_list(curmod, use, api, nam, :define_public)
             end
         end
     end
@@ -252,16 +252,25 @@ function _api(curmod::Module, cmd::Symbol, exprs)
     nothing
 end
 
-function _using_list(curmod, api, mod, grp)
+@static V6_COMPAT || (_dot_name(nam) = Expr(:., nam))
+
+function _do_list(curmod, cmd, api, mod, grp)
     lst = getfield(api, grp)
-    for sym in lst
-        eval(curmod, :(using $mod.$sym))
-    end
-end
-function _import_list(curmod, api, mod, grp)
-    lst = getfield(api, grp)
-    for sym in lst
-        eval(curmod, :(import $mod.$sym))
+    isempty(lst) && return
+    @static if V6_COMPAT
+        length(lst) == 1 && return eval(curmod, Expr(cmd, mod, lst[1]))
+        for nam in lst
+            eval(curmod, Expr(cmd, mod, nam))
+        end
+    else
+        exp = Expr(cmd, Expr(:(:), _dot_name(mod), _dot_name.(lst)...))
+        println(exp)
+        try
+            eval(curmod, exp)
+        catch ex
+            dump(exp)
+            println(sprint(showerror, ex, catch_backtrace()))
+        end
     end
 end
 
