@@ -18,15 +18,14 @@ const BIG_ENDIAN = (ENDIAN_BOM == 0x01020304)
 Base.parse(::Type{Expr}, args...; kwargs...) =
     Meta.parse(args...; kwargs...)
 
-export @api, @def, V6_COMPAT, BIG_ENDIAN
+export @api, V6_COMPAT, BIG_ENDIAN
 
-macro def(name, definition)
+_api_def(name, definition) =
     quote
         macro $(esc(name))()
             esc($(Expr(:quote, definition)))
         end
     end
-end
 
 const SymSet = Set{Symbol}
 
@@ -71,6 +70,9 @@ end
 """Get current module"""
 cur_mod() = ccall(:jl_get_current_module, Ref{Module}, ())
 
+m_eval(mod, expr) = Core.eval(mod, expr)
+m_eval(expr) = m_eval(cur_mod(), expr)
+
 """
 @api <cmd> [<symbols>...]
 
@@ -89,6 +91,9 @@ cur_mod() = ccall(:jl_get_current_module, Ref{Module}, ())
  * @api public <names...>  # Add functions that are part of the public API
  * @api develop <names...> # Add functions that are part of the development API
  * @api modules <names...> # Add submodule names that are part of the API
+
+ * @api def <name> <expr> # Same as the @def macro, creates a macro with the given name
+
 """
 macro api(cmd::Symbol)
     mod = @static V6_COMPAT ? current_module() : __module__
@@ -97,20 +102,14 @@ macro api(cmd::Symbol)
     error("@api unrecognized command: $cmd")
 end
 
-function _api_display(api::AbstractAPI)
-    show(api)
-    println()
-end
+_api_display(mod, nam) =
+    isdefined(mod, nam) && (api = m_eval(mod, nam)) !== nothing && (show(api) ; println())
 
-function _api_list(mod::Module)
-    isdefined(mod, :__api__) && _api_display(eval(mod, :__api__))
-    isdefined(mod, :__tmp_api__) && _api_display(eval(mod, :__tmp_api__))
-    nothing
-end
+_api_list(mod::Module) = (_api_display(mod, :__api__) ; _api_display(mod, :__tmp_api__))
 
 function _api_freeze(mod::Module)
     ex = :( global const __api__ = APITools.API(__tmp_api__) ; __tmp_api__ = nothing )
-    isdefined(mod, :__tmp_api__) && eval(mod, :( __tmp_api__ !== nothing ) ) && eval(mod, ex)
+    isdefined(mod, :__tmp_api__) && m_eval(mod, :( __tmp_api__ !== nothing ) ) && m_eval(mod, ex)
     nothing
 end
 
@@ -131,11 +130,11 @@ function _add_def!(curmod, grp, exp)
         error("@api $grp: syntax error $exp")
     end
     if isdefined(Base, sym)
-        eval(curmod, :(import Base.$sym ))
-        eval(curmod, :(push!(__tmp_api__.base, $(QuoteNode(sym)))))
+        m_eval(curmod, :(import Base.$sym ))
+        m_eval(curmod, :(push!(__tmp_api__.base, $(QuoteNode(sym)))))
     else
-        eval(curmod, :(function $sym end))
-        eval(curmod, :(push!(__tmp_api__.public!, $(QuoteNode(sym)))))
+        m_eval(curmod, :(function $sym end))
+        m_eval(curmod, :(push!(__tmp_api__.public!, $(QuoteNode(sym)))))
     end
 end
 
@@ -143,11 +142,11 @@ end
 function _add_symbols(curmod, grp, exprs)
     if debug[]
         print("_add_symbols($curmod, $grp, $exprs)")
-        isdefined(curmod, :__tmp_api__) && print(" => ", eval(curmod, :__tmp_api__))
+        isdefined(curmod, :__tmp_api__) && print(" => ", m_eval(curmod, :__tmp_api__))
         println()
     end
     ex = :( export @api, APITools ; global __tmp_api__ = APITools.TMP_API($curmod) )
-    isdefined(curmod, :__tmp_api__) || eval(curmod, ex)
+    isdefined(curmod, :__tmp_api__) || m_eval(curmod, ex)
     if grp == :base!
         for ex in exprs
             if isa(ex, Expr) && ex.head == :tuple
@@ -173,14 +172,14 @@ function _add_symbols(curmod, grp, exprs)
         end
         if grp == :base
             for sym in symbols
-                eval(curmod, :( import Base.$sym ))
+                m_eval(curmod, :( import Base.$sym ))
             end
         end
         for sym in symbols
-            eval(curmod, :( push!(__tmp_api__.$grp, $(QuoteNode(sym)) )))
+            m_eval(curmod, :( push!(__tmp_api__.$grp, $(QuoteNode(sym)) )))
         end
     end
-    debug[] && println("after add symbols: ", eval(curmod, :__tmp_api__))
+    debug[] && println("after add symbols: ", m_eval(curmod, :__tmp_api__))
     nothing
 end
 
@@ -189,9 +188,9 @@ function _api_extend(curmod, modules)
     use = :using
 
     for nam in modules
-        mod = eval(curmod, nam)
+        mod = m_eval(curmod, nam)
         if isdefined(mod, :__api__)
-            api = eval(mod, :__api__)
+            api = m_eval(mod, :__api__)
             _do_list(curmod, imp, api, :Base, :base)
             _do_list(curmod, imp, api, nam,   :public!)
             _do_list(curmod, imp, api, nam,   :develop!)
@@ -207,9 +206,9 @@ end
 
 function _api_use(curmod, modules)
     for nam in modules
-        mod = eval(curmod, nam)
+        mod = m_eval(curmod, nam)
         if isdefined(mod, :__api__)
-            api = eval(mod, :__api__)
+            api = m_eval(mod, :__api__)
             _do_list(curmod, :using, api, nam, :public)
             _do_list(curmod, :using, api, nam, :public!)
         end
@@ -217,18 +216,29 @@ function _api_use(curmod, modules)
     nothing
 end
 
-_api_export(curmod, modules) =
-    esc(Expr(:toplevel,
-             [:(eval(Expr( :export, $mod.__api__.$grp... )))
-              for mod in modules, grp in (:modules, :public, :public!)]...,
-             nothing))
+function _api_export(curmod, modules)
+    for nam in modules
+        mod = m_eval(curmod, nam)
+        if isdefined(mod, :__api__)
+            api = m_eval(mod, :__api__)
+            m_eval(curmod, Expr( :export, getfield(api, :modules)...))
+            m_eval(curmod, Expr( :export, getfield(api, :public)...))
+            m_eval(curmod, Expr( :export, getfield(api, :public!)...))
+        end
+    end
+    nothing
+end
 
-_api_list(curmod, modules) =
-    Expr(:toplevel,
-         [:(eval(APITools._api_display($mod))) for mod in modules]...,
-         nothing)
+function _api_list(curmod, modules)
+    for nam in modules
+        _api_list(m_eval(curmod, nam))
+    end
+    nothing
+end
 
 function _api(curmod::Module, cmd::Symbol, exprs)
+    cmd == :def && return _api_def(exprs...)
+
     ind = _ff(_cmdadd, cmd)
     ind == 0 || return _add_symbols(curmod, cmd, exprs)
 
@@ -239,10 +249,10 @@ function _api(curmod::Module, cmd::Symbol, exprs)
     for ex in exprs
         if isa(ex, Expr) && ex.head == :tuple
             push!(modules, ex.args...)
-            for sym in ex.args ; eval(curmod, :(import $sym)) ; end
+            for sym in ex.args ; m_eval(curmod, :(import $sym)) ; end
         elseif isa(ex, Symbol)
             push!(modules, ex)
-            eval(curmod, :(import $ex))
+            m_eval(curmod, :(import $ex))
         else
             error("@api $cmd: syntax error $ex")
         end
@@ -253,14 +263,14 @@ function _api(curmod::Module, cmd::Symbol, exprs)
     cmd == :list && return _api_list(curmod, modules)
 
     for nam in modules
-        mod = eval(curmod, nam)
-        for sym in getfield(eval(mod, :__api__), :modules)
-            eval(curmod, :(using $nam.$sym))
+        mod = m_eval(curmod, nam)
+        for sym in getfield(m_eval(mod, :__api__), :modules)
+            m_eval(curmod, :(using $nam.$sym))
         end
     end
 
     # Be nice and set up standard Test
-    cmd == :test && eval(curmod, V6_COMPAT ? :(using Base.Test) : :(using Test))
+    cmd == :test && m_eval(curmod, V6_COMPAT ? :(using Base.Test) : :(using Test))
 
     cmd == :use ? _api_use(curmod, modules) : _api_extend(curmod, modules)
 end
@@ -274,13 +284,13 @@ function _do_list(curmod, cmd, api, mod, grp)
         for nam in lst
             exp = Expr(cmd, mod, nam)
             debug[] && println("V6: $cmd, $mod, $mod, $exp")
-            eval(curmod, exp)
+            m_eval(curmod, exp)
         end
     else
         exp = Expr(cmd, Expr(:(:), _dot_name(mod), _dot_name.(lst)...))
         debug[] && println("V7: $cmd, $mod, $mod, $exp")
         try
-            eval(curmod, exp)
+            m_eval(curmod, exp)
         catch ex
             println("APITools: Error evaluating $exp")
             dump(exp)
