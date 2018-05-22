@@ -1,5 +1,5 @@
 module APITest
-using APITools
+using ModuleInterfaceTools
 
 @api base nextind, getindex, setindex!
 

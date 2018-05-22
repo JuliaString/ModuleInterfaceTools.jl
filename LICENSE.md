@@ -1,4 +1,4 @@
-The APITools.jl package is licensed under the MIT "Expat" License:
+The ModuleInterfaceTools.jl package is licensed under the MIT "Expat" License:
 
 Copyright (c) 2018: Gandalf Software, Inc. (Scott Paul Jones)
 

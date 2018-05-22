@@ -1,7 +1,7 @@
 # Copyright 2018 Gandalf Software, Inc., Scott P. Jones
 # Licensed under MIT License, see LICENSE.md
 
-using APITools
+using ModuleInterfaceTools
 
 @static V6_COMPAT ? (using Base.Test) : (using Test)
 

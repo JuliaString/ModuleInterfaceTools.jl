@@ -8,7 +8,7 @@ Licensed under MIT License, see LICENSE.md
 
 (@def macro "stolen" from DiffEqBase.jl/src/util.jl :-) )
 """
-module APITools
+module ModuleInterfaceTools
 
 const debug = Ref(false)
 
@@ -60,7 +60,7 @@ API(api::TMP_API) =
         SymList(api.public!), SymList(api.develop!), SymList(api.modules))
 
 function Base.show(io::IO, api::AbstractAPI)
-    println(io, "APITools.API: ", api.mod)
+    println(io, "ModuleInterfaceTools.API: ", api.mod)
     for fld in (:base, :public, :develop, :public!, :develop!, :modules)
         syms = getfield(api, fld)
         isempty(syms) || println(fld, ": ", syms)
@@ -108,7 +108,7 @@ _api_display(mod, nam) =
 _api_list(mod::Module) = (_api_display(mod, :__api__) ; _api_display(mod, :__tmp_api__))
 
 function _api_freeze(mod::Module)
-    ex = :( global const __api__ = APITools.API(__tmp_api__) ; __tmp_api__ = nothing )
+    ex = :( global const __api__ = ModuleInterfaceTools.API(__tmp_api__) ; __tmp_api__ = nothing )
     isdefined(mod, :__tmp_api__) && m_eval(mod, :( __tmp_api__ !== nothing ) ) && m_eval(mod, ex)
     nothing
 end
@@ -145,7 +145,7 @@ function _add_symbols(curmod, grp, exprs)
         isdefined(curmod, :__tmp_api__) && print(" => ", m_eval(curmod, :__tmp_api__))
         println()
     end
-    ex = :( export @api, APITools ; global __tmp_api__ = APITools.TMP_API($curmod) )
+    ex = :( export @api, ModuleInterfaceTools ; global __tmp_api__ = ModuleInterfaceTools.TMP_API($curmod) )
     isdefined(curmod, :__tmp_api__) || m_eval(curmod, ex)
     if grp == :base!
         for ex in exprs
@@ -292,7 +292,7 @@ function _do_list(curmod, cmd, api, mod, grp)
         try
             m_eval(curmod, exp)
         catch ex
-            println("APITools: Error evaluating $exp")
+            println("ModuleInterfaceTools: Error evaluating $exp")
             dump(exp)
             println(sprint(showerror, ex, catch_backtrace()))
         end
@@ -303,4 +303,4 @@ macro api(cmd::Symbol, exprs...)
     @static V6_COMPAT ? _api(current_module(), cmd, exprs) : _api(__module__, cmd, exprs)
 end
 
-end # module APITools
+end # module ModuleInterfaceTools
