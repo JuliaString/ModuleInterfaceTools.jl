@@ -1,12 +1,9 @@
 # ModuleInterfaceTools
 
-[![Build Status](https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl.svg?branch=master)](https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl)
-
-[![Coverage Status](https://coveralls.io/repos/github/JuliaString/ModuleInterfaceTools.jl/badge.svg
-?branch=master)](https://coveralls.io/github/JuliaString/ModuleInterfaceTools.jl?branch=master)
-[![codecov.io](http://codecov.io/github/JuliaString/ModuleInterfaceTools.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaString/ModuleInterfaceTools.jl?branch=master)
-
-The `ModuleInterfaceTools` package is now working on both the release version (v0.6.2) and the latest master (v0.7.0-DEV).
+| **Package Status** | **Package Evaluator** | **Coverage**      |
+|:------------------:|:---------------------:|:-----------------:|
+| [![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE.md) | [![ModuleInterfaceTools](http://pkg.julialang.org/badges/ModuleInterfaceTools_0.6.svg)](http://pkg.julialang.org/?pkg=ModuleInterfaceTools) | [![Coverage Status](https://coveralls.io/repos/github/JuliaString/ModuleInterfaceTools.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaString/ModuleInterfaceTools.jl?branch=master) |
+| [![Build Status](https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl.svg?branch=master)](https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl) |  [![ModuleInterfaceTools](http://pkg.julialang.org/badges/ModuleInterfaceTools_0.7.svg)](http://pkg.julialang.org/?pkg=ModuleInterfaceTools) | [![codecov.io](http://codecov.io/github/JuliaString/ModuleInterfaceTools.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaString/ModuleInterfaceTools.jl?branch=master) |
 
 This provides a way of having different lists of names that you want to be part of a public API,
 as well as being part of a development API (i.e. functions that are not normally needed by users of a package, but *are* needed by a developer writing a package that depends on it).
