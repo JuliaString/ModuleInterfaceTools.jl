@@ -1,9 +1,37 @@
 # ModuleInterfaceTools
 
-| **Package Status** | **Package Evaluator** | **Coverage**      |
-|:------------------:|:---------------------:|:-----------------:|
-| [![License](http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE.md) | [![ModuleInterfaceTools](http://pkg.julialang.org/badges/ModuleInterfaceTools_0.6.svg)](http://pkg.julialang.org/?pkg=ModuleInterfaceTools) | [![Coverage Status](https://coveralls.io/repos/github/JuliaString/ModuleInterfaceTools.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaString/ModuleInterfaceTools.jl?branch=master) |
-| [![Build Status](https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl.svg?branch=master)](https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl) |  [![ModuleInterfaceTools](http://pkg.julialang.org/badges/ModuleInterfaceTools_0.7.svg)](http://pkg.julialang.org/?pkg=ModuleInterfaceTools) | [![codecov.io](http://codecov.io/github/JuliaString/ModuleInterfaceTools.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaString/ModuleInterfaceTools.jl?branch=master) |
+| **Info** | **Windows** | **Linux & MacOS** | **Package Evaluator** | **CodeCov** | **Coveralls** |
+|:------------------:|:------------------:|:---------------------:|:-----------------:|:---------------------:|:-----------------:|
+| [![][license-img]][license-url] | [![][app-s-img]][app-s-url] | [![][travis-s-img]][travis-url] | [![][pkg-s-img]][pkg-s-url] | [![][codecov-img]][codecov-url] | [![][coverall-s-img]][coverall-s-url]
+| [![][gitter-img]][gitter-url] | [![][app-m-img]][app-m-url] | [![][travis-m-img]][travis-url] | [![][pkg-m-img]][pkg-m-url] | [![][codecov-img]][codecov-url] | [![][coverall-m-img]][coverall-m-url]
+
+[license-img]:  http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
+[license-url]:  LICENSE.md
+
+[gitter-img]:   https://badges.gitter.im/Join%20Chat.svg
+[gitter-url]:   https://gitter.im/JuliaString/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge
+
+[travis-url]:   https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl
+[travis-s-img]: https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl.svg
+[travis-m-img]: https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl.svg?branch=master
+
+[app-s-url]:    https://ci.appveyor.com/project/ScottPJones/moduleinterfacetools-jl
+[app-m-url]:    https://ci.appveyor.com/project/ScottPJones/moduleinterfacetools-jl/branch/master
+[app-s-img]:    https://ci.appveyor.com/api/projects/status/x13gh7y6id3fbmke?svg=true
+[app-m-img]:    https://ci.appveyor.com/api/projects/status/x13gh7y6id3fbmke/branch/master?svg=true
+
+[pkg-s-url]:    http://pkg.julialang.org/detail/ModuleInterfaceTools
+[pkg-m-url]:    http://pkg.julialang.org/detail/ModuleInterfaceTools
+[pkg-s-img]:    http://pkg.julialang.org/badges/ModuleInterfaceTools_0.6.svg
+[pkg-m-img]:    http://pkg.julialang.org/badges/ModuleInterfaceTools_0.7.svg
+
+[codecov-url]:  https://codecov.io/gh/JuliaString/ModuleInterfaceTools.jl
+[codecov-img]:  https://codecov.io/gh/JuliaString/ModuleInterfaceTools.jl/branch/master/graph/badge.svg
+
+[coverall-s-url]: https://coveralls.io/github/JuliaString/ModuleInterfaceTools.jl
+[coverall-m-url]: https://coveralls.io/github/JuliaString/ModuleInterfaceTools.jl?branch=master
+[coverall-s-img]: https://coveralls.io/repos/github/JuliaString/ModuleInterfaceTools.jl/badge.svg
+[coverall-m-img]: https://coveralls.io/repos/github/JuliaString/ModuleInterfaceTools.jl/badge.svg?branch=master
 
 This provides a way of having different lists of names that you want to be part of a public API,
 as well as being part of a development API (i.e. functions that are not normally needed by users of a package, but *are* needed by a developer writing a package that depends on it).

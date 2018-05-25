@@ -1,11 +1,12 @@
+name = "ModuleInterfaceTools"
 desc = "Tools to help build a consistent API across various packages, use it, and enquire about it"
 keywords = ["package", "module", "API"]
 license = "MIT"
-name = "ModuleInterfaceTools"
-deps = ["Test"]
-git-tree-sha1 = "b4fc455cbdc313ecd8c08173153bf8abfcb9e5a6"
+authors = ["ScottPJones <scottjones@alum.mit.edu>"]
 repo = "https://github.com/JuliaString/ModuleInterfaceTools.jl.git"
-repo-rev = ""
-repo-url = "/s/ModuleInterfaceTools.jl"
 uuid = "5cb8414e-7aab-5a03-a681-351269c074bf"
-version = "0.1.0+"
+
+version = "0.1.0"
+[deps]
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
