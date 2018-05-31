@@ -118,7 +118,7 @@ const _cmdadd =
     (:modules, :public, :develop, :public!, :develop!, :base, :base!)
 
 @static V6_COMPAT && (const _ff = findfirst)
-@static V6_COMPAT || (_ff(lst, val) = coalesce(findfirst(isequal(val), lst), 0))
+@static V6_COMPAT || (_ff(lst, val) = something(findfirst(isequal(val), lst), 0))
 
 function _add_def!(curmod, grp, exp)
     debug[] && print("_add_def!($curmod, $grp, $exp::$(typeof(exp))")
