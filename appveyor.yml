@@ -44,7 +44,7 @@ build_script:
       versioninfo();
       if VERSION < v\"0.7.0-DEV.5183\";
           Pkg.clone(pwd(), \"ModuleInterfaceTools\");
-      else; pkg"up"; end"
+      else; Pkg.up(); end"
 
 test_script:
   - C:\projects\julia\bin\julia -e "VERSION < v\"0.7.0-DEV\" || (using Pkg); Pkg.test(\"ModuleInterfaceTools\")"
