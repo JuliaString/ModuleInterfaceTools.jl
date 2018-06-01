@@ -117,8 +117,8 @@ const _cmduse = (:use, :test, :extend, :export, :list)
 const _cmdadd =
     (:modules, :public, :develop, :public!, :develop!, :base, :base!)
 
-@static V6_COMPAT && (const _ff = findfirst)
-@static V6_COMPAT || (_ff(lst, val) = something(findfirst(isequal(val), lst), 0))
+@static V6_COMPAT ? (const _ff = findfirst) :
+    (_ff(lst, val) = (ret = findfirst(isequal(val), lst); ret === nothing ? 0 : ret))
 
 function _add_def!(curmod, grp, exp)
     debug[] && print("_add_def!($curmod, $grp, $exp::$(typeof(exp))")
