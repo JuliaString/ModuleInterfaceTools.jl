@@ -3,7 +3,7 @@
 
 using ModuleInterfaceTools
 
-@static V6_COMPAT ? (using Base.Test) : (using Pkg, Test)
+@static V6_COMPAT ? (using Base.Test) : (using Test)
 
 # Pick up APITest from the test directory
 push!(LOAD_PATH, @__DIR__)
