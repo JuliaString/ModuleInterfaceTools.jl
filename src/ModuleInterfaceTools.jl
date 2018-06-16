@@ -20,6 +20,9 @@ const BIG_ENDIAN = (ENDIAN_BOM == 0x01020304)
     export Pkg
 end
 
+_stdout() = @static V6_COMPAT ? STDOUT : stdout
+_stderr() = @static V6_COMPAT ? STDERR : stderr
+
 Base.parse(::Type{Expr}, args...; kwargs...) =
     Meta.parse(args...; kwargs...)
 
@@ -80,7 +83,8 @@ function m_eval(mod, expr)
         Core.eval(mod, expr)
     catch ex
         println("m_eval($mod, $expr)");
-        rethrow(ex)
+        println(sprint(showerror, ex, catch_backtrace()))
+        #rethrow(ex)
     end
 end
 m_eval(expr) = m_eval(cur_mod(), expr)
@@ -111,7 +115,7 @@ m_eval(expr) = m_eval(cur_mod(), expr)
 
 """
 macro api(cmd::Symbol)
-    mod = @static V6_COMPAT ? current_module() : __module__
+    mod = @static V6_COMPAT ? current_module() : @__MODULE__
     cmd == :list   ? _api_list(mod) :
     cmd == :freeze ? _api_freeze(mod) :
     error("@api unrecognized command: $cmd")
@@ -167,6 +171,12 @@ function push_args!(symbols, lst, grp)
     end
 end
 
+"""Initialize the temp api variable for this module"""
+_init_api(curmod) =
+    isdefined(curmod, :__tmp_api__) ||
+        m_eval(curmod, :( export @api, ModuleInterfaceTools ;
+                          global __tmp_api__ = ModuleInterfaceTools.TMP_API($curmod)))
+
 """Add symbols"""
 function _add_symbols(curmod, grp, exprs)
     if debug[]
@@ -174,8 +184,7 @@ function _add_symbols(curmod, grp, exprs)
         isdefined(curmod, :__tmp_api__) && print(" => ", m_eval(curmod, :__tmp_api__))
         println()
     end
-    ex = :( export @api, ModuleInterfaceTools ; global __tmp_api__ = ModuleInterfaceTools.TMP_API($curmod) )
-    isdefined(curmod, :__tmp_api__) || m_eval(curmod, ex)
+    _init_api(curmod)
     if grp == :base!
         for ex in exprs
             if isa(ex, Expr) && ex.head == :tuple
@@ -212,18 +221,21 @@ function _add_symbols(curmod, grp, exprs)
     nothing
 end
 
+has_api(mod) = isdefined(mod, :__api__)
+get_api(mod) = m_eval(mod, :__api__)
+
 function _api_extend(curmod, modules, cpy::Bool)
     for nam in modules
         mod = m_eval(curmod, nam)
-        if isdefined(mod, :__api__)
-            api = m_eval(mod, :__api__)
-            _do_list(curmod, cpy, :import, :Base, :base,     api)
-            _do_list(curmod, cpy, :import, nam,   :public!,  api)
-            _do_list(curmod, cpy, :import, nam,   :develop!, api)
-            _do_list(curmod, cpy, :using,  nam,   :public,   api)
-            _do_list(curmod, cpy, :using,  nam,   :develop,  api)
+        if has_api(mod)
+            api = get_api(mod)
+            _do_list(curmod, cpy, :import, Base, :Base, :base,  api)
+            _do_list(curmod, cpy, :import, mod, nam, :public!,  api)
+            _do_list(curmod, cpy, :import, mod, nam, :develop!, api)
+            _do_list(curmod, cpy, :using,  mod, nam, :public,   api)
+            _do_list(curmod, cpy, :using,  mod, nam, :develop,  api)
         else
-            _do_list(curmod, cpy, :import, nam,   :public!,  names(mod))
+            _do_list(curmod, cpy, :import, mod, nam, :public!,  names(mod))
         end
     end
     nothing
@@ -232,12 +244,12 @@ end
 function _api_use(curmod, modules, cpy::Bool)
     for nam in modules
         mod = m_eval(curmod, nam)
-        if isdefined(mod, :__api__)
-            api = m_eval(mod, :__api__)
-            _do_list(curmod, cpy, :using, nam, :public,  api)
-            _do_list(curmod, cpy, :using, nam, :public!, api)
+        if has_api(mod)
+            api = get_api(mod)
+            _do_list(curmod, cpy, :using, mod, nam, :public,  api)
+            _do_list(curmod, cpy, :using, mod, nam, :public!, api)
         else
-            _do_list(curmod, cpy, :using, nam, :public!, names(mod))
+            _do_list(curmod, cpy, :using, mod, nam, :public!, names(mod))
         end
     end
     nothing
@@ -246,8 +258,9 @@ end
 function _api_export(curmod, modules)
     for nam in modules
         mod = m_eval(curmod, nam)
-        if isdefined(mod, :__api__)
-            api = m_eval(mod, :__api__)
+        api = get_api(mod)
+        if has_api(mod)
+            api = get_api(mod)
             m_eval(curmod, Expr( :export, getfield(api, :modules)...))
             m_eval(curmod, Expr( :export, getfield(api, :public)...))
             m_eval(curmod, Expr( :export, getfield(api, :public!)...))
@@ -300,48 +313,60 @@ function _api(curmod::Module, cmd::Symbol, exprs)
 
     for nam in modules
         mod = m_eval(curmod, nam)
-        for sym in getfield(m_eval(mod, :__api__), :modules)
-            m_eval(curmod, :(using $nam.$sym))
+        if has_api(mod)
+            for sym in getfield(get_api(mod), :modules)
+                if isdefined(mod, sym)
+                    m_eval(curmod, :(using $nam.$sym))
+                else
+                    println(_stderr(), "Warning: Exported symbol $sym is not defined in $nam")
+                end
+            end
         end
     end
 
     # Be nice and set up standard Test
     cmd == :test && m_eval(curmod, V6_COMPAT ? :(using Base.Test) : :(using Test))
 
+    cpy = (cmd == :use!) || (cmd == :extend!)
+
+    cpy && _init_api(curmod)
     ((cmd == :use || cmd == :use!)
-     ? _api_use(curmod, modules, cmd == :use!)
-     : _api_extend(curmod, modules, cmd == :extend!))
+     ? _api_use(curmod, modules, cpy)
+     : _api_extend(curmod, modules, cpy))
 end
 
 @static V6_COMPAT || (_dot_name(nam) = Expr(:., nam))
 
-_do_list(curmod, cpy, cmd, mod, grp, api::API) =
-    _do_list(curmod, cpy, cmd, mod, grp, getfield(api, grp))
+_do_list(curmod, cpy, cmd, mod, nam, grp, api::API) =
+    _do_list(curmod, cpy, cmd, mod, nam, grp, getfield(api, grp))
 
-function _do_list(curmod, cpy, cmd, mod, grp, lst)
-    isempty(lst) && return
-    @static if V6_COMPAT
-        for nam in lst
-            exp = Expr(cmd, mod, nam)
-            debug[] && println("V6: $cmd, $mod, $mod, $exp")
-            m_eval(curmod, exp)
+function _do_list(curmod, cpy, cmd, mod, nam, grp, lst)
+    for sym in lst
+        if isdefined(mod, sym)
+            m_eval(curmod, Expr(cmd, nam, sym))
+            cpy && m_eval(curmod, :( push!(__tmp_api__.$grp, $(QuoteNode(sym)) )))
+        else
+            println(_stderr(), "Warning: Exported symbol $sym is not defined in $nam")
         end
-    else
-        exp = Expr(cmd, Expr(:(:), _dot_name(mod), _dot_name.(lst)...))
-        debug[] && println("V7: $cmd, $mod, $mod, $exp")
-        try
-            m_eval(curmod, exp)
-        catch ex
-            println("ModuleInterfaceTools: Error evaluating $exp")
-            dump(exp)
-            println(sprint(showerror, ex, catch_backtrace()))
-        end
+    end
+end
+
+#=
+function _do_list(curmod, cpy, cmd, mod, nam, grp, lst)
+    exp = Expr(cmd, Expr(:(:), _dot_name(nam), _dot_name.(lst)...))
+    try
+        m_eval(curmod, exp)
+    catch ex
+        println("ModuleInterfaceTools: Error evaluating $exp")
+        dump(exp)
+        println(sprint(showerror, ex, catch_backtrace()))
     end
     cpy && for sym in lst; m_eval(curmod, :( push!(__tmp_api__.$grp, $(QuoteNode(sym)) ))); end
 end
+=#
 
 macro api(cmd::Symbol, exprs...)
-    @static V6_COMPAT ? _api(current_module(), cmd, exprs) : _api(__module__, cmd, exprs)
+    _api((@static V6_COMPAT ? current_module() : @__MODULE__), cmd, exprs)
 end
 
 end # module ModuleInterfaceTools
