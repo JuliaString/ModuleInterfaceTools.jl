@@ -111,6 +111,8 @@ m_eval(expr) = m_eval(cur_mod(), expr)
  * develop! <names...>  # Add functions that are part of the development API (extendible)
  * modules  <names...>  # Add submodule names that are part of the API
 
+ * path     <paths...>  # Add paths to LOAD_PATH
+
  * def <name> <expr>    # Same as the @def macro, creates a macro with the given name
 
 """
@@ -118,6 +120,7 @@ macro api(cmd::Symbol)
     mod = @static V6_COMPAT ? current_module() : @__MODULE__
     cmd == :list   ? _api_list(mod) :
     cmd == :freeze ? _api_freeze(mod) :
+    cmd == :test   ? _api_test(mod) :
     error("@api unrecognized command: $cmd")
 end
 
@@ -129,6 +132,20 @@ _api_list(mod::Module) = (_api_display(mod, :__api__) ; _api_display(mod, :__tmp
 function _api_freeze(mod::Module)
     ex = :( global const __api__ = ModuleInterfaceTools.API(__tmp_api__) ; __tmp_api__ = nothing )
     isdefined(mod, :__tmp_api__) && m_eval(mod, :( __tmp_api__ !== nothing ) ) && m_eval(mod, ex)
+    nothing
+end
+
+function _api_path(curmod, exprs)
+    for exp in exprs
+        if isa(exp, Expr) || isa(exp, Symbol)
+            str = m_eval(curmod, exp)
+        elseif isa(exp, String)
+            str = exp
+        else
+            error("@api path: syntax error $exp")
+        end
+        m_eval(curmod, :( push!(LOAD_PATH, $str) ))
+    end
     nothing
 end
 
@@ -276,8 +293,11 @@ function _api_list(curmod, modules)
     nothing
 end
 
+_api_test(mod) = m_eval(mod, V6_COMPAT ? :(using Base.Test) : :(using Test))
+
 function _api(curmod::Module, cmd::Symbol, exprs)
     cmd == :def && return _api_def(exprs...)
+    cmd == :path && return _api_path(curmod, exprs)
 
     ind = _ff(_cmdadd, cmd)
     ind == 0 || return _add_symbols(curmod, cmd, exprs)
@@ -285,6 +305,10 @@ function _api(curmod::Module, cmd::Symbol, exprs)
     _ff(_cmduse, cmd) == 0 && error("Syntax error: @api $cmd $exprs")
 
     debug[] && print("_api($curmod, $cmd, $exprs)")
+
+    # Be nice and set up standard Test
+    cmd == :test && _api_test(curmod)
+
     modules = SymSet()
     for ex in exprs
         if isa(ex, Expr) && ex.head == :tuple
@@ -323,9 +347,6 @@ function _api(curmod::Module, cmd::Symbol, exprs)
             end
         end
     end
-
-    # Be nice and set up standard Test
-    cmd == :test && m_eval(curmod, V6_COMPAT ? :(using Base.Test) : :(using Test))
 
     cpy = (cmd == :use!) || (cmd == :extend!)
 
