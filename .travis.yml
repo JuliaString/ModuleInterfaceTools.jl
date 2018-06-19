@@ -13,9 +13,9 @@ git:
 
 ## uncomment the following lines to allow failures on nightly julia
 ## (tests will run but not make your overall status red)
-#matrix:
-#  allow_failures:
-#  - julia: nightly
+matrix:
+  allow_failures:
+  - julia: nightly
 
 ## uncomment and modify the following lines to manually install system packages
 #addons:
@@ -27,7 +27,15 @@ git:
 
 ## uncomment the following lines to override the default test script
 script:
-  - julia -e 'if VERSION < v"0.7.0-DEV.5183" ; Pkg.clone(pwd()) ; else ; Pkg.up() ; end ; Pkg.test("ModuleInterfaceTools"; coverage=true)'
+  - julia -e '
+    if VERSION < v"0.7.0-DEV.5183";
+        Pkg.clone(pwd());
+        Pkg.test("ModuleInterfaceTools", coverage=true);
+    else;
+        using UUIDs; import Pkg; p = "Project.toml"; uuid = "5cb8414e-7aab-5a03-a681-351269c074bf";
+	write(p, replace(read(p, String), uuid => uuid4()));
+        Pkg.instantiate(); push!(LOAD_PATH, "test"); Pkg.test(; coverage=true);
+    end'
 after_success:
   # push coverage results to Coveralls
   - julia -e 'cd(Pkg.dir("ModuleInterfaceTools")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'

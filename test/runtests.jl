@@ -3,10 +3,9 @@
 
 using ModuleInterfaceTools
 
-@static V6_COMPAT ? (using Base.Test) : (using Test)
+@api test
 
-# Pick up APITest from the test directory
-push!(LOAD_PATH, @__DIR__)
+@api path (@static V6_COMPAT ? joinpath(Pkg.dir("ModuleInterfaceTools"), "test") : @__DIR__)
 
 @api extend APITest
 

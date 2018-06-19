@@ -7,10 +7,10 @@ environment:
 
 ## uncomment the following lines to allow failures on nightly julia
 ## (tests will run but not make your overall status red)
-#matrix:
-#  allow_failures:
-#  - JULIA_URL: "https://julialangnightlies-s3.julialang.org/bin/winnt/x86/julia-latest-win32.exe"
-#  - JULIA_URL: "https://julialangnightlies-s3.julialang.org/bin/winnt/x64/julia-latest-win64.exe"
+matrix:
+  allow_failures:
+  - JULIA_URL: "https://julialangnightlies-s3.julialang.org/bin/winnt/x86/julia-latest-win32.exe"
+  - JULIA_URL: "https://julialangnightlies-s3.julialang.org/bin/winnt/x64/julia-latest-win64.exe"
 
 branches:
   only:
@@ -44,7 +44,12 @@ build_script:
       versioninfo();
       if VERSION < v\"0.7.0-DEV.5183\";
           Pkg.clone(pwd(), \"ModuleInterfaceTools\");
-      else; Pkg.up(); end"
+      else;
+          p = \"Project.toml\"; using UUIDs;
+          uuid = \"5cb8414e-7aab-5a03-a681-351269c074bf\";
+          write(p, replace(read(p, String), uuid => uuid4()));
+          using Pkg; Pkg.instantiate();
+      end"
 
 test_script:
-  - C:\projects\julia\bin\julia -e "Pkg.test(\"ModuleInterfaceTools\")"
+  - C:\projects\julia\bin\julia -e "VERSION < v\"0.7.0-DEV\" || (using Pkg); push!(LOAD_PATH, \"test\"); Pkg.test(\"ModuleInterfaceTools\")"
