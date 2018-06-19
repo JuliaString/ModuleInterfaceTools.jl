@@ -1,5 +1,5 @@
 name = "ModuleInterfaceTools"
-uuid = "5cb8414e-7aab-5a03-a681-351269c074bf"
+uuid = "57012a8c-f217-493e-9761-d906ce7698cb"
 keywords = ["package", "module", "API"]
 license = "MIT"
 desc = "Tools to help build a consistent API across various packages, use it, and enquire about it"
@@ -8,3 +8,4 @@ authors = ["ScottPJones <scottjones@alum.mit.edu>"]
 [deps]
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+APITest = "999adbfa-7dca-48e3-8844-41bde97b6280"
