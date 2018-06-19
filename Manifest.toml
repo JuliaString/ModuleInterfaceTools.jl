@@ -1,5 +1,23 @@
+[[InteractiveUtils]]
+uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+
+[[ModuleInterfaceTools]]
+deps = ["InteractiveUtils", "Test"]
+git-tree-sha1 = "cee1e40a47a60742a40287f3c1df6375e92e524c"
+uuid = "5cb8414e-7aab-5a03-a681-351269c074bf"
+version = "0.1.2"
+
 [[Pkg]]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+
+[[Random]]
+uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[[StrAPI]]
+deps = ["InteractiveUtils", "ModuleInterfaceTools", "Pkg", "Random"]
+git-tree-sha1 = "b905011d68af46965c9e89594d7d217153a742e1"
+uuid = "69e7dfc3-c4d0-5e14-8d95-d6042a05b383"
+version = "0.1.2"
 
 [[Test]]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

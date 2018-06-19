@@ -5,11 +5,9 @@ using ModuleInterfaceTools
 
 @api test
 
-@api path (@static V6_COMPAT ? joinpath(Pkg.dir("ModuleInterfaceTools"), "test") : @__DIR__)
+@api extend StrAPI
 
-@api extend APITest
-
-@api list APITest
+@api list StrAPI
 
 @api def testcase begin
     myname = "Scott Paul Jones"
@@ -20,17 +18,18 @@ end
     @test myname == "Scott Paul Jones"
 end
 
-myfunc(::AbstractFloat) = 3
+codepoints(x::Integer) = 1
+codepoints(x::Float64) = 2
 
 @testset "Function extension" begin
-    @test myfunc(1) == 1
-    @test myfunc("foo") == 2
-    @test myfunc(2.0) == 3
+    @test typeof(codepoints("foo")) === CodePoints{String}
+    @test codepoints(1) == 1
+    @test codepoints(2.0) == 2
 end
 
 @testset "API lists" begin
-    @test APITest.__api__.mod == APITest
-    @test Set(APITest.__api__.base) == Set([:nextind, :getindex, :setindex!])
-    @test Set(APITest.__api__.public) == Set([:Foo])
-    @test Set(APITest.__api__.public!) == Set([:myfunc])
+    @test StrAPI.__api__.mod == StrAPI
+    @test :split in Set(StrAPI.__api__.base)
+    @test :encoding in Set(StrAPI.__api__.public!)
+    @test :Direction in Set(StrAPI.__api__.public)
 end
