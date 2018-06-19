@@ -52,4 +52,4 @@ build_script:
       end"
 
 test_script:
-  - C:\projects\julia\bin\julia -e "VERSION < v\"0.7.0-DEV\" || (using Pkg); Pkg.test(\"ModuleInterfaceTools\")"
+  - C:\projects\julia\bin\julia -e "VERSION < v\"0.7.0-DEV\" || (using Pkg); push!(LOAD_PATH, \"test\"); Pkg.test(\"ModuleInterfaceTools\")"
