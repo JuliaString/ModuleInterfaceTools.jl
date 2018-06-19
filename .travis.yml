@@ -27,8 +27,7 @@ matrix:
 
 ## uncomment the following lines to override the default test script
 script:
-  - julia -e '
-    if VERSION < v"0.7.0-DEV.5183";
+  - julia -e 'if VERSION < v"0.7.0-DEV.5183";
         Pkg.clone(pwd());
         Pkg.test("ModuleInterfaceTools", coverage=true);
     else;
