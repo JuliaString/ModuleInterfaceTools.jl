@@ -71,7 +71,13 @@ function Base.show(io::IO, api::AbstractAPI)
     println(io, "ModuleInterfaceTools.API: ", api.mod)
     for fld in (:base, :public, :develop, :public!, :develop!, :modules)
         syms = getfield(api, fld)
-        isempty(syms) || println(fld, ": ", syms)
+        isempty(syms) && continue
+        print(fld, ":")
+        for s in syms
+            print(" ", s)
+        end
+        println()
+        println()
     end
 end
 
@@ -87,7 +93,6 @@ function m_eval(mod, expr)
         #rethrow(ex)
     end
 end
-m_eval(expr) = m_eval(cur_mod(), expr)
 
 """
 @api <cmd> [<symbols>...]
@@ -342,6 +347,7 @@ function _api(curmod::Module, cmd::Symbol, exprs)
         if has_api(mod)
             for sym in getfield(get_api(mod), :modules)
                 if isdefined(mod, sym)
+                    println("curmod=$curmod, using $nam.$sym, cpy=$cpy")
                     m_eval(curmod, :(using $nam.$sym))
                     cpy && m_eval(curmod, :( push!(__tmp_api__.modules, $(QuoteNode(sym)) )))
                 else
