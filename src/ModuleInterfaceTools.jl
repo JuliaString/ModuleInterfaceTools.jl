@@ -341,13 +341,13 @@ function _api(curmod::Module, cmd::Symbol, exprs)
     cmd == :list && return _api_list(curmod, modules)
 
     cpy = (cmd == :use!) || (cmd == :extend!)
+    cpy && _init_api(curmod)
 
     for nam in modules
         mod = m_eval(curmod, nam)
         if has_api(mod)
             for sym in getfield(get_api(mod), :modules)
                 if isdefined(mod, sym)
-                    println("curmod=$curmod, using $nam.$sym, cpy=$cpy")
                     m_eval(curmod, :(using $nam.$sym))
                     cpy && m_eval(curmod, :( push!(__tmp_api__.modules, $(QuoteNode(sym)) )))
                 else
@@ -357,7 +357,6 @@ function _api(curmod::Module, cmd::Symbol, exprs)
         end
     end
 
-    cpy && _init_api(curmod)
     ((cmd == :use || cmd == :use!)
      ? _api_use(curmod, modules, cpy)
      : _api_extend(curmod, modules, cpy))
