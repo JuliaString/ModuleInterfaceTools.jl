@@ -1,5 +1,5 @@
 name = "ModuleInterfaceTools"
-uuid = "57012a8c-f217-493e-9761-d906ce7698cb"
+uuid = "5cb8414e-7aab-5a03-a681-351269c074bf"
 keywords = ["package", "module", "API"]
 license = "MIT"
 desc = "Tools to help build a consistent API across various packages, use it, and enquire about it"
