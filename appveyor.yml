@@ -42,15 +42,13 @@ build_script:
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "VERSION < v\"0.7.0-DEV\" || (using InteractiveUtils, Pkg);
       versioninfo();
+      mit = \"ModuleInterfaceTools\"; sa = \"StrAPI\"; loc=\"https://github.com/JuliaString\";
       if VERSION < v\"0.7.0-DEV.5183\";
-          Pkg.clone(pwd(), \"ModuleInterfaceTools\");
-      else;
-          p = \"Project.toml\"; using UUIDs; sa=\"StrAPI\";
-          uuid = \"5cb8414e-7aab-5a03-a681-351269c074bf\";
-          write(p, replace(read(p, String), uuid => uuid4()));
-          Pkg.clone(\"https://github.com/JuliaString/StrAPI.jl\", sa);
+          Pkg.clone(pwd(), mit);
+          Pkg.clone(\"$loc/$sa.jl\", sa);
           Pkg.checkout(sa, \"master\");
-          Pkg.instantiate();
+      else;
+          Pkg.add(sa); Pkg.add(pwd()); Pkg.up();
       end"
 
 test_script:
