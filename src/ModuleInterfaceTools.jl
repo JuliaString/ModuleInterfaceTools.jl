@@ -122,7 +122,7 @@ end
 
 """
 macro api(cmd::Symbol)
-    mod = @static V6_COMPAT ? current_module() : @__MODULE__
+    mod = @static V6_COMPAT ? current_module() : cur_mod()
     cmd == :list   ? _api_list(mod) :
     cmd == :freeze ? _api_freeze(mod) :
     cmd == :test   ? _api_test(mod) :
@@ -379,7 +379,7 @@ function _do_list(curmod, cpy, cmd, mod, nam, grp, lst)
 end
 
 macro api(cmd::Symbol, exprs...)
-    _api((@static V6_COMPAT ? current_module() : @__MODULE__), cmd, exprs)
+    _api((@static V6_COMPAT ? current_module() : cur_mod()), cmd, exprs)
 end
 
 end # module ModuleInterfaceTools

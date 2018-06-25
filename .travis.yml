@@ -27,8 +27,8 @@ matrix:
 
 ## uncomment the following lines to override the default test script
 script:
-#  - julia -e 'mit="ModuleInterfaceTools"; sa="StrAPI"; loc="https://github.com/JuliaString"; if VERSION < v"0.7.0-DEV.5183"; Pkg.clone(pwd()); Pkg.clone("$loc/$sa.jl"); Pkg.checkout(sa, "master"); Pkg.test(mit, coverage=true); else; using UUIDs; import Pkg; p = "Project.toml"; uuid = "5cb8414e-7aab-5a03-a681-351269c074bf"; write(p, replace(read(p, String), uuid => uuid4())); Pkg.add(sa); Pkg.add(pwd()); Pkg.up(); Pkg.test(; coverage=true); end'
-  - julia -e 'mit="ModuleInterfaceTools"; sa="StrAPI"; loc="https://github.com/JuliaString"; if VERSION < v"0.7.0-DEV.5183"; Pkg.clone(pwd()); Pkg.clone("$loc/$sa.jl"); Pkg.checkout(sa, "master"); Pkg.test(mit, coverage=true); else; import Pkg; Pkg.add(sa); Pkg.add(pwd()); Pkg.up(); Pkg.test(; coverage=true); end'
+#  - julia -e 'mit="ModuleInterfaceTools"; sa="StrAPI"; loc="https://github.com/JuliaString"; if VERSION < v"0.7.0-DEV.5183"; Pkg.clone(pwd()); Pkg.clone("$loc/$sa.jl"); Pkg.checkout(sa, "master"); else; using UUIDs; import Pkg; p = "Project.toml"; uuid = "5cb8414e-7aab-5a03-a681-351269c074bf"; write(p, replace(read(p, String), uuid => uuid4())); Pkg.add(sa); Pkg.add(pwd()); Pkg.up(); end; Pkg.test(mit; coverage=true)'
+  - julia -e 'mit="ModuleInterfaceTools"; sa="StrAPI"; loc="https://github.com/JuliaString"; if VERSION < v"0.7.0-DEV.5183"; Pkg.clone(pwd()); Pkg.clone("$loc/$sa.jl"); Pkg.checkout(sa, "master"); else; import Pkg; Pkg.add(sa); Pkg.add(pwd()); Pkg.up(); end; Pkg.test(mit; coverage=true)'
 after_success:
   # push coverage results to Coveralls
   - julia -e 'cd(Pkg.dir("ModuleInterfaceTools")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
