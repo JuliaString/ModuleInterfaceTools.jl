@@ -1,0 +1,12 @@
+name = "ModuleInterfaceTools"
+uuid = "5cb8414e-7aab-5a03-a681-351269c074bf"
+keywords = ["Packages", "API", "Modules"]
+license = "MIT"
+desc = "Macro to help manage module and package APIs"
+authors = ["ScottPJones <scottjones@alum.mit.edu>"]
+version = "0.1.4"
+
+[deps]
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+StrTables = "9700d1a9-a7c8-5760-9816-a99fda30bb8f"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

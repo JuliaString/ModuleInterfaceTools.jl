@@ -1,0 +1,17 @@
+[[Dates]]
+uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
+
+[[InteractiveUtils]]
+uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+
+[[Pkg]]
+uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+
+[[StrTables]]
+deps = ["Dates", "InteractiveUtils", "Pkg", "Test"]
+git-tree-sha1 = "56e259bdbcf08215f567771c765b8d93b6bbdf42"
+uuid = "9700d1a9-a7c8-5760-9816-a99fda30bb8f"
+version = "0.2.4"
+
+[[Test]]
+uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

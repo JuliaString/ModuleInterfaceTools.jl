@@ -5,9 +5,9 @@ using ModuleInterfaceTools
 
 @api test
 
-@api extend StrAPI
+@api extend StrTables
 
-@api list StrAPI
+@api list StrTables
 
 @api def testcase begin
     myname = "Scott Paul Jones"
@@ -18,18 +18,12 @@ end
     @test myname == "Scott Paul Jones"
 end
 
-codepoints(x::Integer) = 1
-codepoints(x::Float64) = 2
+cvt_char(x::Integer) = 1
+cvt_char(x::Float64) = 2
 
 @testset "Function extension" begin
-    @test typeof(codepoints("foo")) === CodePoints{String}
-    @test codepoints(1) == 1
-    @test codepoints(2.0) == 2
-end
-
-@testset "API lists" begin
-    @test StrAPI.__api__.mod == StrAPI
-    @test :split in Set(StrAPI.__api__.base)
-    @test :encoding in Set(StrAPI.__api__.public!)
-    @test :Direction in Set(StrAPI.__api__.public)
+    @test typeof(cvt_char("foo")) == Vector{Char}
+    @test cvt_char(1) == 1
+    @test cvt_char(2.0) == 2
+    @test cvt_char("th") == Char['t', 'h']
 end
