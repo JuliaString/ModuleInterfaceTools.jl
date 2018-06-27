@@ -129,8 +129,21 @@ macro api(cmd::Symbol)
     error("@api unrecognized command: $cmd")
 end
 
-_api_display(mod, nam) =
-    isdefined(mod, nam) && (api = m_eval(mod, nam)) !== nothing && (show(api) ; println())
+function _api_display(mod, nam)
+    if isdefined(mod, nam) && (api = m_eval(mod, nam)) !== nothing
+        show(api);
+    else
+        println("Exported from $mod:")
+        syms = names(mod)
+        if !isempty(syms)
+            print(fld, ":")
+            for s in syms
+                print(" ", s)
+            end
+        end
+    end
+    println()
+end
 
 _api_list(mod::Module) = (_api_display(mod, :__api__) ; _api_display(mod, :__tmp_api__))
 
@@ -362,7 +375,7 @@ function _api(curmod::Module, cmd::Symbol, exprs)
      : _api_extend(curmod, modules, cpy))
 end
 
-@static V6_COMPAT || (_dot_name(nam) = Expr(:., nam))
+makecmd(cmd, nam, sym) = @static V6_COMPAT ? Expr(cmd, nam, sym) : Expr(cmd, Expr(:., nam, sym))
 
 _do_list(curmod, cpy, cmd, mod, nam, grp, api::API) =
     _do_list(curmod, cpy, cmd, mod, nam, grp, getfield(api, grp))
@@ -371,7 +384,7 @@ function _do_list(curmod, cpy, cmd, mod, nam, grp, lst)
     debug[] && println("_do_list($curmod, $cpy, $cmd, $mod, $nam, $grp, $lst)")
     for sym in lst
         if isdefined(mod, sym)
-            m_eval(curmod, Expr(cmd, nam, sym))
+            m_eval(curmod, makecmd(cmd, nam, sym))
             cpy && m_eval(curmod, :( push!(__tmp_api__.$grp, $(QuoteNode(sym)) )))
         else
             println(_stderr(), "Warning: Exported symbol $sym is not defined in $nam")
