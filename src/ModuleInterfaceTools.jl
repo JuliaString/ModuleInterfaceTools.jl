@@ -82,7 +82,7 @@ function Base.show(io::IO, api::AbstractAPI)
 end
 
 """Get current module"""
-cur_mod() = ccall(:jl_get_current_module, Ref{Module}, ())
+cur_mod() = @static V6_COMPAT ? current_module() : ccall(:jl_get_current_module, Ref{Module}, ())
 
 function m_eval(mod, expr)
     try
@@ -122,7 +122,7 @@ end
 
 """
 macro api(cmd::Symbol)
-    mod = @static V6_COMPAT ? current_module() : cur_mod()
+    mod =  cur_mod()
     cmd == :list   ? _api_list(mod) :
     cmd == :freeze ? _api_freeze(mod) :
     cmd == :test   ? _api_test(mod) :
@@ -368,6 +368,7 @@ _do_list(curmod, cpy, cmd, mod, nam, grp, api::API) =
     _do_list(curmod, cpy, cmd, mod, nam, grp, getfield(api, grp))
 
 function _do_list(curmod, cpy, cmd, mod, nam, grp, lst)
+    debug[] && println("_do_list($curmod, $cpy, $cmd, $mod, $nam, $grp, $lst)")
     for sym in lst
         if isdefined(mod, sym)
             m_eval(curmod, Expr(cmd, nam, sym))
@@ -379,7 +380,7 @@ function _do_list(curmod, cpy, cmd, mod, nam, grp, lst)
 end
 
 macro api(cmd::Symbol, exprs...)
-    _api((@static V6_COMPAT ? current_module() : cur_mod()), cmd, exprs)
+    _api(cur_mod(), cmd, exprs)
 end
 
 end # module ModuleInterfaceTools
