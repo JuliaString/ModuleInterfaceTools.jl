@@ -114,6 +114,8 @@ end
  * public!  <names...>  # Add functions that are part of the public API (extendible)
  * develop  <names...>  # Add other symbols that are part of the development API
  * develop! <names...>  # Add functions that are part of the development API (extendible)
+ * define!  <names...>  # Define functions to be extended, public API
+ * defdev!  <names...>  # Define functions to be extended, develop API
  * modules  <names...>  # Add submodule names that are part of the API
 
  * path     <paths...>  # Add paths to LOAD_PATH
@@ -183,13 +185,15 @@ function _add_def!(curmod, grp, exp)
     else
         error("@api $grp: syntax error $exp")
     end
-    if isdefined(Base, sym)
+    if grp == :base! && isdefined(Base, sym)
         m_eval(curmod, :(import Base.$sym ))
         m_eval(curmod, :(push!(__tmp_api__.base, $(QuoteNode(sym)))))
-    else
-        m_eval(curmod, :(function $sym end))
-        m_eval(curmod, :(push!(__tmp_api__.public!, $(QuoteNode(sym)))))
+        return
     end
+    m_eval(curmod, :(function $sym end))
+    m_eval(curmod, (grp == :defdev!
+                    ? :(push!(__tmp_api__.develop!, $(QuoteNode(sym))))
+                    : :(push!(__tmp_api__.public!,  $(QuoteNode(sym))))))
 end
 
 function push_args!(symbols, lst, grp)
@@ -220,7 +224,7 @@ function _add_symbols(curmod, grp, exprs)
         println()
     end
     _init_api(curmod)
-    if grp == :base!
+    if grp == :base! || grp == :define! || grp == :defdev!
         for ex in exprs
             if isa(ex, Expr) && ex.head == :tuple
                 for sym in ex.args

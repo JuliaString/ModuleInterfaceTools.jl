@@ -5,6 +5,7 @@ os:
   - osx
 julia:
   - 0.6
+  - 0.7
   - nightly
 notifications:
   email: false
@@ -27,7 +28,7 @@ git:
 
 ## uncomment the following lines to override the default test script
 script:
-  - julia -e 'mit="ModuleInterfaceTools"; if VERSION < v"0.7.0-DEV.5183"; Pkg.clone(pwd()); Pkg.test(mit; coverage=true); else; import Pkg; using UUIDs; p = "Project.toml"; uuid = "5cb8414e-7aab-5a03-a681-351269c074bf"; write(p, replace(read(p, String), uuid => uuid4())); Pkg.up(); Pkg.test(;coverage=true); end'
+  - julia -e 'mit="ModuleInterfaceTools"; if VERSION < v"0.7.0-DEV.5183"; Pkg.clone(pwd()); Pkg.test(mit; coverage=true); else; import Pkg; using UUIDs; p = "Project.toml"; uuid = "5cb8414e-7aab-5a03-a681-351269c074bf"; write(p, replace(read(p, String), uuid => uuid4())); Pkg.update(); end; Pkg.test(;coverage=true)'
 after_success:
   # push coverage results to Coveralls
   - julia -e 'cd(Pkg.dir("ModuleInterfaceTools")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
