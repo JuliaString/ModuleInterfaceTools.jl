@@ -5,7 +5,7 @@ using ModuleInterfaceTools
 
 @api test
 
-@api extend StrTables
+@api extend InternedStrings
 
 @api list StrTables
 
@@ -18,12 +18,12 @@ end
     @test myname == "Scott Paul Jones"
 end
 
-cvt_char(x::Integer) = 1
-cvt_char(x::Float64) = 2
+intern(x::Integer) = 1
+intern(x::Float64) = 2
 
 @testset "Function extension" begin
-    @test typeof(cvt_char("foo")) == Vector{Char}
-    @test cvt_char(1) == 1
-    @test cvt_char(2.0) == 2
-    @test cvt_char("th") == Char['t', 'h']
+    @test typeof(intern("foo")) == String
+    @test intern(1) == 1
+    @test intern(2.0) == 2
+    @test intern("th") == "th"
 end
