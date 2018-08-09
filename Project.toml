@@ -7,8 +7,6 @@ authors = ["ScottPJones <scottjones@alum.mit.edu>"]
 version = "0.1.5"
 
 [deps]
-Format = "1fa38f19-a742-5d3f-a2b9-30dd87b9d5f8"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-StrTables = "9700d1a9-a7c8-5760-9816-a99fda30bb8f"
-StringLiterals = "8f8e9dd7-1da5-502a-9ec1-434721d5fc53"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+InternedStrings = "7d512f48-7fb1-5a58-b986-67e6dc259f01"

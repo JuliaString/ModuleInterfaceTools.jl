@@ -7,7 +7,7 @@ using ModuleInterfaceTools
 
 @api extend InternedStrings
 
-@api list StrTables
+@api list InternedStrings
 
 @api def testcase begin
     myname = "Scott Paul Jones"
