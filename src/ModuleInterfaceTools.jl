@@ -282,8 +282,8 @@ function _api_use(curmod, modules, cpy::Bool)
         mod = m_eval(curmod, nam)
         if has_api(mod)
             api = get_api(mod)
-            _do_list(curmod, cpy, :using,  mod, nam, :public,  api)
-            _do_list(curmod, cpy, :using,  mod, nam, :public!, api)
+            _do_list(curmod, cpy, :using, mod, nam, :public,  api)
+            _do_list(curmod, cpy, :using, mod, nam, :public!, api)
         else
             _do_list(curmod, cpy, :using, mod, nam, :public!, names(mod))
         end
@@ -376,7 +376,15 @@ function _api(curmod::Module, cmd::Symbol, exprs)
      : _api_extend(curmod, modules, cpy))
 end
 
-makecmd(cmd, nam, sym) = @static V6_COMPAT ? Expr(cmd, nam, sym) : Expr(cmd, Expr(:., nam, sym))
+function makecmd(cmd, nam, sym)
+    @static if V6_COMPAT
+        Expr(cmd, nam, sym)
+    else
+        (cmd == :using
+         ? Expr(cmd, Expr(:(:), Expr(:., nam), Expr(:., sym)))
+         : Expr(cmd, Expr(:., nam, sym)))
+    end
+end
 
 _do_list(curmod, cpy, cmd, mod, nam, grp, api::API) =
     _do_list(curmod, cpy, cmd, mod, nam, grp, getfield(api, grp))
