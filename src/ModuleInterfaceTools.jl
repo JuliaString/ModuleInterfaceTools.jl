@@ -12,13 +12,8 @@ module ModuleInterfaceTools
 
 const debug = Ref(false)
 
-const V6_COMPAT = VERSION < v"0.7.0-DEV"
+const V6_COMPAT = VERSION < v"0.7-"
 const BIG_ENDIAN = (ENDIAN_BOM == 0x01020304)
-
-@static if !V6_COMPAT
-    using Pkg
-    export Pkg
-end
 
 _stdout() = @static V6_COMPAT ? STDOUT : stdout
 _stderr() = @static V6_COMPAT ? STDERR : stderr
@@ -147,7 +142,7 @@ end
 _api_list(mod::Module) = (_api_display(mod, :__api__) ; _api_display(mod, :__tmp_api__))
 
 function _api_freeze(mod::Module)
-    ex = :( global const __api__ = ModuleInterfaceTools.API(__tmp_api__) ; __tmp_api__ = nothing )
+    ex = :( const __api__ = ModuleInterfaceTools.API(__tmp_api__) ; __tmp_api__ = nothing )
     isdefined(mod, :__tmp_api__) && m_eval(mod, :( __tmp_api__ !== nothing ) ) && m_eval(mod, ex)
     nothing
 end
@@ -210,8 +205,7 @@ end
 """Initialize the temp api variable for this module"""
 _init_api(curmod) =
     isdefined(curmod, :__tmp_api__) ||
-        m_eval(curmod, :( export @api, ModuleInterfaceTools ;
-                          global __tmp_api__ = ModuleInterfaceTools.TMP_API($curmod)))
+        m_eval(curmod, :( global __tmp_api__ = ModuleInterfaceTools.TMP_API($curmod)))
 
 """Add symbols"""
 function _add_symbols(curmod, grp, exprs)
