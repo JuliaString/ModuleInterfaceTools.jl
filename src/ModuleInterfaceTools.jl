@@ -11,6 +11,7 @@ Licensed under MIT License, see LICENSE.md
 module ModuleInterfaceTools
 
 const debug = Ref(false)
+const showeval = Ref(false)
 
 const V6_COMPAT = VERSION < v"0.7-"
 const BIG_ENDIAN = (ENDIAN_BOM == 0x01020304)
@@ -78,6 +79,7 @@ end
 
 function m_eval(mod, expr)
     try
+        showeval[] && println("m_eval($mod, $expr)")
         Core.eval(mod, expr)
     catch ex
         println("m_eval($mod, $expr)");
@@ -252,13 +254,13 @@ function _add_symbols(curmod, grp, exprs)
 end
 
 has_api(mod) = isdefined(mod, :__api__)
-get_api(mod) = m_eval(mod, :__api__)
+get_api(curmod, mod) = m_eval(curmod, :( $mod.__api__ ))
 
 function _api_extend(curmod, modules, cpy::Bool)
     for nam in modules
         mod = m_eval(curmod, nam)
         if has_api(mod)
-            api = get_api(mod)
+            api = get_api(curmod, mod)
             _do_list(curmod, cpy, :import, Base, :Base, :base,  api)
             _do_list(curmod, cpy, :import, mod, nam, :public!,  api)
             _do_list(curmod, cpy, :import, mod, nam, :develop!, api)
@@ -275,7 +277,7 @@ function _api_use(curmod, modules, cpy::Bool)
     for nam in modules
         mod = m_eval(curmod, nam)
         if has_api(mod)
-            api = get_api(mod)
+            api = get_api(curmod, mod)
             _do_list(curmod, cpy, :using, mod, nam, :public,  api)
             _do_list(curmod, cpy, :using, mod, nam, :public!, api)
         else
@@ -288,9 +290,8 @@ end
 function _api_export(curmod, modules)
     for nam in modules
         mod = m_eval(curmod, nam)
-        api = get_api(mod)
         if has_api(mod)
-            api = get_api(mod)
+            api = get_api(curmod, mod)
             m_eval(curmod, Expr( :export, getfield(api, :modules)...))
             m_eval(curmod, Expr( :export, getfield(api, :public)...))
             m_eval(curmod, Expr( :export, getfield(api, :public!)...))
@@ -354,7 +355,8 @@ function _api(curmod::Module, cmd::Symbol, exprs)
     for nam in modules
         mod = m_eval(curmod, nam)
         if has_api(mod)
-            for sym in getfield(get_api(mod), :modules)
+            api = get_api(curmod, mod)
+            for sym in getfield(api, :modules)
                 if isdefined(mod, sym)
                     m_eval(curmod, :(using $nam.$sym))
                     cpy && m_eval(curmod, :( push!(__tmp_api__.modules, $(QuoteNode(sym)) )))
