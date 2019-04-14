@@ -4,7 +4,7 @@ keywords = ["Packages", "API", "Modules"]
 license = "MIT"
 desc = "Macro to help manage module and package APIs"
 authors = ["ScottPJones <scottjones@alum.mit.edu>"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 

@@ -2,7 +2,7 @@ __precompile__(true)
 """
 API Tools package
 
-Copyright 2018 Gandalf Software, Inc., Scott P. Jones
+Copyright 2018-2019 Gandalf Software, Inc., Scott P. Jones
 
 Licensed under MIT License, see LICENSE.md
 
@@ -16,8 +16,8 @@ const showeval = Ref(false)
 const V6_COMPAT = VERSION < v"0.7-"
 const BIG_ENDIAN = (ENDIAN_BOM == 0x01020304)
 
-_stdout() = @static V6_COMPAT ? STDOUT : stdout
-_stderr() = @static V6_COMPAT ? STDERR : stderr
+_stdout() = stdout
+_stderr() = stderr
 
 Base.parse(::Type{Expr}, args...; kwargs...) =
     Meta.parse(args...; kwargs...)
@@ -91,26 +91,26 @@ end
 """
 @api <cmd> [<symbols>...]
 
- * freeze               # use at end of module to freeze API
+ * freeze                # use at end of module to freeze API
 
- * list    <modules>... # list API(s) of given modules (or current if none given)
+ * list     <modules>... # list API(s) of given modules (or current if none given)
 
- * use     <modules>... # use, without importing (i.e. can't extend)
- * use!    <modules>... # use, without importing (i.e. can't extend), "export"
- * test    <modules>... # using public and develop APIs, for testing purposes
- * extend  <modules>... # for development, imports api & dev, use api & dev definitions
- * extend! <modules>... # for development, imports api & dev, use api & dev definitions, "export"
- * export  <modules>... # export public definitions
+ * use      <modules>... # use, without importing (i.e. can't extend)
+ * use!     <modules>... # use, without importing (i.e. can't extend), "export"
+ * test     <modules>... # using public and develop APIs, for testing purposes
+ * extend   <modules>... # for development, imports api & dev, use api & dev definitions
+ * extend!  <modules>... # for development, imports api & dev, use api & dev definitions, "export"
+ * reexport <modules>... # export public definitions from those modules
 
- * base     <names...>  # Add functions from Base that are part of the API (extendible)
- * base!    <names...>  # Add functions from Base or define them if not in Base
- * public   <names...>  # Add other symbols that are part of the public API (structs, consts)
- * public!  <names...>  # Add functions that are part of the public API (extendible)
- * develop  <names...>  # Add other symbols that are part of the development API
- * develop! <names...>  # Add functions that are part of the development API (extendible)
- * define!  <names...>  # Define functions to be extended, public API
- * defdev!  <names...>  # Define functions to be extended, develop API
- * modules  <names...>  # Add submodule names that are part of the API
+ * base     <names...>   # Add functions from Base that are part of the API (extendible)
+ * base!    <names...>   # Add functions from Base or define them if not in Base
+ * public   <names...>   # Add other symbols that are part of the public API (structs, consts)
+ * public!  <names...>   # Add functions that are part of the public API (extendible)
+ * develop  <names...>   # Add other symbols that are part of the development API
+ * develop! <names...>   # Add functions that are part of the development API (extendible)
+ * define!  <names...>   # Define functions to be extended, public API
+ * defdev!  <names...>   # Define functions to be extended, develop API
+ * modules  <names...>   # Add submodule names that are part of the API
 
  * path     <paths...>  # Add paths to LOAD_PATH
 
@@ -118,7 +118,7 @@ end
 
 """
 macro api(cmd::Symbol)
-    mod = @static V6_COMPAT ? current_module() : __module__
+    mod = __module__
     cmd == :list   ? _api_list(mod) :
     cmd == :freeze ? _api_freeze(mod) :
     cmd == :test   ? _api_test(mod) :
@@ -163,12 +163,11 @@ function _api_path(curmod, exprs)
     nothing
 end
 
-const _cmduse = (:use, :use!, :test, :extend, :extend!, :export, :list)
+const _cmduse = (:use, :use!, :test, :extend, :extend!, :reexport, :list)
 const _cmdadd =
     (:modules, :public, :develop, :public!, :develop!, :base, :base!, :define!, :defdev!)
 
-@static V6_COMPAT ? (const _ff = findfirst) :
-    (_ff(lst, val) = (ret = findfirst(isequal(val), lst); ret === nothing ? 0 : ret))
+_ff(lst, val) = (ret = findfirst(isequal(val), lst); ret === nothing ? 0 : ret)
 
 function _add_def!(curmod, grp, exp)
     debug[] && print("_add_def!($curmod, $grp, $exp::$(typeof(exp))")
@@ -287,7 +286,7 @@ function _api_use(curmod, modules, cpy::Bool)
     nothing
 end
 
-function _api_export(curmod, modules)
+function _api_reexport(curmod, modules)
     for nam in modules
         mod = m_eval(curmod, nam)
         if has_api(mod)
@@ -307,7 +306,7 @@ function _api_list(curmod, modules)
     nothing
 end
 
-_api_test(mod) = m_eval(mod, V6_COMPAT ? :(using Base.Test) : :(using Test))
+_api_test(mod) = m_eval(mod, :(using Test))
 
 function _api(curmod::Module, cmd::Symbol, exprs)
     cmd == :def && return _api_def(exprs...)
@@ -346,7 +345,7 @@ function _api(curmod::Module, cmd::Symbol, exprs)
     end
     debug[] && println(" => $modules")
 
-    cmd == :export && return _api_export(curmod, modules)
+    cmd == :reexport && return _api_reexport(curmod, modules)
     cmd == :list && return _api_list(curmod, modules)
 
     cpy = (cmd == :use!) || (cmd == :extend!)
@@ -373,13 +372,9 @@ function _api(curmod::Module, cmd::Symbol, exprs)
 end
 
 function makecmd(cmd, nam, sym)
-    @static if V6_COMPAT
-        Expr(cmd, nam, sym)
-    else
-        (cmd == :using
-         ? Expr(cmd, Expr(:(:), Expr(:., nam), Expr(:., sym)))
-         : Expr(cmd, Expr(:., nam, sym)))
-    end
+    (cmd == :using
+     ? Expr(cmd, Expr(:(:), Expr(:., nam), Expr(:., sym)))
+     : Expr(cmd, Expr(:., nam, sym)))
 end
 
 _do_list(curmod, cpy, cmd, mod, nam, grp, api::API) =
@@ -398,8 +393,7 @@ function _do_list(curmod, cpy, cmd, mod, nam, grp, lst)
 end
 
 macro api(cmd::Symbol, exprs...)
-    mod = @static V6_COMPAT ? current_module() : __module__ 
-    _api(mod, cmd, exprs)
+    _api(__module__, cmd, exprs)
 end
 
 end # module ModuleInterfaceTools
