@@ -4,7 +4,7 @@ keywords = ["Packages", "API", "Modules"]
 license = "MIT"
 desc = "Macro to help manage module and package APIs"
 authors = ["ScottPJones <scottjones@alum.mit.edu>"]
-version = "0.2.1"
+version = "1.0.0"
 
 [deps]
 
@@ -14,3 +14,6 @@ InternedStrings = "7d512f48-7fb1-5a58-b986-67e6dc259f01"
 
 [targets]
 test = ["Test", "InternedStrings"]
+
+[compat]
+julia = "^1.0.0"
