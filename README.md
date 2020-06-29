@@ -1,9 +1,12 @@
 # ModuleInterfaceTools
 
-| **Info** | **Windows** | **Linux & MacOS** | **Package Evaluator** | **CodeCov** | **Coveralls** |
-|:------------------:|:------------------:|:---------------------:|:-----------------:|:---------------------:|:-----------------:|
-| [![][license-img]][license-url] | [![][app-s-img]][app-s-url] | [![][travis-s-img]][travis-url] | [![][pkg-s-img]][pkg-s-url] | [![][codecov-img]][codecov-url] | [![][coverall-s-img]][coverall-s-url]
-| [![][gitter-img]][gitter-url] | [![][app-m-img]][app-m-url] | [![][travis-m-img]][travis-url] | [![][pkg-m-img]][pkg-m-url] | [![][codecov-img]][codecov-url] | [![][coverall-m-img]][coverall-m-url]
+[pkg-url]: https://github.com/JuliaString/ModuleInterfaceTools.jl.git
+
+[julia-url]:    https://github.com/JuliaLang/Julia
+[julia-release]:https://img.shields.io/github/release/JuliaLang/julia.svg
+
+[release]:      https://img.shields.io/github/release/JuliaString/ModuleInterfaceTools.jl.svg
+[release-date]: https://img.shields.io/github/release-date/JuliaString/ModuleInterfaceTools.jl.svg
 
 [license-img]:  http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 [license-url]:  LICENSE.md
@@ -15,23 +18,17 @@
 [travis-s-img]: https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl.svg
 [travis-m-img]: https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl.svg?branch=master
 
-[app-s-url]:    https://ci.appveyor.com/project/ScottPJones/moduleinterfacetools-jl
-[app-m-url]:    https://ci.appveyor.com/project/ScottPJones/moduleinterfacetools-jl/branch/master
-[app-s-img]:    https://ci.appveyor.com/api/projects/status/x13gh7y6id3fbmke?svg=true
-[app-m-img]:    https://ci.appveyor.com/api/projects/status/x13gh7y6id3fbmke/branch/master?svg=true
-
-[pkg-s-url]:    http://pkg.julialang.org/detail/ModuleInterfaceTools
-[pkg-m-url]:    http://pkg.julialang.org/detail/ModuleInterfaceTools
-[pkg-s-img]:    http://pkg.julialang.org/badges/ModuleInterfaceTools_0.6.svg
-[pkg-m-img]:    http://pkg.julialang.org/badges/ModuleInterfaceTools_0.7.svg
-
 [codecov-url]:  https://codecov.io/gh/JuliaString/ModuleInterfaceTools.jl
 [codecov-img]:  https://codecov.io/gh/JuliaString/ModuleInterfaceTools.jl/branch/master/graph/badge.svg
 
-[coverall-s-url]: https://coveralls.io/github/JuliaString/ModuleInterfaceTools.jl
-[coverall-m-url]: https://coveralls.io/github/JuliaString/ModuleInterfaceTools.jl?branch=master
-[coverall-s-img]: https://coveralls.io/repos/github/JuliaString/ModuleInterfaceTools.jl/badge.svg
-[coverall-m-img]: https://coveralls.io/repos/github/JuliaString/ModuleInterfaceTools.jl/badge.svg?branch=master
+[contrib]:    https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat
+
+[![][release]][pkg-url] [![][release-date]][pkg-url] [![][license-img]][license-url] [![contributions welcome][contrib]](https://github.com/JuliaString/ModuleInterfaceTools.jl/issues)
+
+| **Julia Version** | **Unit Tests** | **Coverage** |
+|:------------------:|:------------------:|:---------------------:|
+| [![][julia-release]][julia-url] | [![][travis-s-img]][travis-url] | [![][codecov-img]][codecov-url]
+| Julia Latest | [![][travis-m-img]][travis-url] | [![][codecov-img]][codecov-url]
 
 This provides a way of having different lists of names that you want to be part of a public API,
 as well as being part of a development API (i.e. functions that are not normally needed by users of a package, but *are* needed by a developer writing a package that depends on it).
