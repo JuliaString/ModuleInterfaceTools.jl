@@ -14,9 +14,8 @@
 [gitter-img]:   https://badges.gitter.im/Join%20Chat.svg
 [gitter-url]:   https://gitter.im/JuliaString/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge
 
-[travis-url]:   https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl
-[travis-s-img]: https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl.svg
-[travis-m-img]: https://travis-ci.org/JuliaString/ModuleInterfaceTools.jl.svg?branch=master
+[ga-s-img]: https://img.shields.io/github/checks-status/JuliaString/ModuleInterfaceTools.jl
+[ga-m-img]: https://img.shields.io/github/checks-status/JuliaString/ModuleInterfaceTools.jl/master
 
 [codecov-url]:  https://codecov.io/gh/JuliaString/ModuleInterfaceTools.jl
 [codecov-img]:  https://codecov.io/gh/JuliaString/ModuleInterfaceTools.jl/branch/master/graph/badge.svg
@@ -27,8 +26,8 @@
 
 | **Julia Version** | **Unit Tests** | **Coverage** |
 |:------------------:|:------------------:|:---------------------:|
-| [![][julia-release]][julia-url] | [![][travis-s-img]][travis-url] | [![][codecov-img]][codecov-url]
-| Julia Latest | [![][travis-m-img]][travis-url] | [![][codecov-img]][codecov-url]
+| [![][julia-release]][julia-url] | [![][ga-s-img]][pkg-url] | [![][codecov-img]][codecov-url]
+| Julia Latest | [![][ga-m-img]][pkg-url] | [![][codecov-img]][codecov-url]
 
 This provides a way of having different lists of names that you want to be part of a public API,
 as well as being part of a development API (i.e. functions that are not normally needed by users of a package, but *are* needed by a developer writing a package that depends on it).
